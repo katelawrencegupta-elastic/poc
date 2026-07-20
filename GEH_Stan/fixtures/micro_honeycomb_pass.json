@@ -1,0 +1,17 @@
+{
+  "cd613e30-d8f1-6adf-91b7-584a2265b1f5": {
+    "80mm": {
+      "failed_modules": [],
+      "status": "PASS"
+    },
+    "map": {
+      "collimation": "80",
+      "dataset": "cal-data-mode-pcd-non-spectral",
+      "is_bad": {},
+      "is_bad_count": 0,
+      "vector_type": "system_lpp_map"
+    }
+  },
+  "specid": "sysService_v1",
+  "status": "pass"
+}

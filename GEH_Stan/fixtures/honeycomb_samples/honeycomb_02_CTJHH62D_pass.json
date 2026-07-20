@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "ebd05eb7-3677-a4a5-f2df-6035d3c17334": {
+      "80mm": {
+        "failed_modules": [],
+        "status": "PASS"
+      },
+      "map": {
+        "collimation": "80",
+        "dataset": "cal-data-mode-pcd-non-spectral",
+        "is_bad": {},
+        "is_bad_count": 0,
+        "vector_type": "system_lpp_map"
+      }
+    },
+    "specid": "sysService_v1",
+    "status": "pass"
+  },
+  "meta": {
+    "sysid": "CTJHH62D",
+    "hospital": "Johns Hopkins Hospital",
+    "machine_type": "Demo",
+    "site_id": "hopkins",
+    "productName": "Revolution Apex Elite (160)"
+  }
+}

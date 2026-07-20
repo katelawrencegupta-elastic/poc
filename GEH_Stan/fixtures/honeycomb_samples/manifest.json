@@ -1,0 +1,98 @@
+[
+  {
+    "file": "honeycomb_00_CTKAR71_fail.json",
+    "status": "fail",
+    "sysid": "CTKAR71",
+    "hospital": "Karolinska University Hospital",
+    "machine_type": "Clinical",
+    "is_bad_count": 194
+  },
+  {
+    "file": "honeycomb_01_CTCSM22D_fail.json",
+    "status": "fail",
+    "sysid": "CTCSM22D",
+    "hospital": "Cedars-Sinai Medical Center",
+    "machine_type": "Demo",
+    "is_bad_count": 416
+  },
+  {
+    "file": "honeycomb_02_CTJHH62D_pass.json",
+    "status": "pass",
+    "sysid": "CTJHH62D",
+    "hospital": "Johns Hopkins Hospital",
+    "machine_type": "Demo",
+    "is_bad_count": 0
+  },
+  {
+    "file": "honeycomb_03_CTAPHP01_pass.json",
+    "status": "pass",
+    "sysid": "CTAPHP01",
+    "hospital": "AP-HP Pitie-Salpetriere",
+    "machine_type": "Clinical",
+    "is_bad_count": 0
+  },
+  {
+    "file": "honeycomb_04_CTKAR72_pass.json",
+    "status": "pass",
+    "sysid": "CTKAR72",
+    "hospital": "Karolinska University Hospital",
+    "machine_type": "Clinical",
+    "is_bad_count": 0
+  },
+  {
+    "file": "honeycomb_05_CTSKH02D_pass.json",
+    "status": "pass",
+    "sysid": "CTSKH02D",
+    "hospital": "The Hospital for Sick Children",
+    "machine_type": "Demo",
+    "is_bad_count": 0
+  },
+  {
+    "file": "honeycomb_06_CTCLE51_fail.json",
+    "status": "fail",
+    "sysid": "CTCLE51",
+    "hospital": "Cleveland Clinic Main Campus",
+    "machine_type": "Clinical",
+    "is_bad_count": 249
+  },
+  {
+    "file": "honeycomb_07_CTSHC92_fail.json",
+    "status": "fail",
+    "sysid": "CTSHC92",
+    "hospital": "Stanford Health Care",
+    "machine_type": "Clinical",
+    "is_bad_count": 115
+  },
+  {
+    "file": "honeycomb_08_CTKAR71_fail.json",
+    "status": "fail",
+    "sysid": "CTKAR71",
+    "hospital": "Karolinska University Hospital",
+    "machine_type": "Clinical",
+    "is_bad_count": 176
+  },
+  {
+    "file": "honeycomb_09_CTCLE51_pass.json",
+    "status": "pass",
+    "sysid": "CTCLE51",
+    "hospital": "Cleveland Clinic Main Campus",
+    "machine_type": "Clinical",
+    "is_bad_count": 0
+  },
+  {
+    "file": "honeycomb_10_CTCLE51_fail.json",
+    "status": "fail",
+    "sysid": "CTCLE51",
+    "hospital": "Cleveland Clinic Main Campus",
+    "machine_type": "Clinical",
+    "is_bad_count": 279
+  },
+  {
+    "file": "honeycomb_11_CTGHE01_pass.json",
+    "status": "pass",
+    "sysid": "CTGHE01",
+    "hospital": "GE HealthCare Florence Campus",
+    "machine_type": "Internal",
+    "is_bad_count": 0
+  }
+]

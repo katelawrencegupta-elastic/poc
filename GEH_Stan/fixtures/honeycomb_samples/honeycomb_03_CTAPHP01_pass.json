@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "67d9849f-3c94-f8e0-d974-b822f0a612e1": {
+      "80mm": {
+        "failed_modules": [],
+        "status": "PASS"
+      },
+      "map": {
+        "collimation": "80",
+        "dataset": "cal-data-mode-pcd-non-spectral",
+        "is_bad": {},
+        "is_bad_count": 0,
+        "vector_type": "system_lpp_map"
+      }
+    },
+    "specid": "sysService_v1",
+    "status": "pass"
+  },
+  "meta": {
+    "sysid": "CTAPHP01",
+    "hospital": "AP-HP Pitie-Salpetriere",
+    "machine_type": "Clinical",
+    "site_id": "ap_hp",
+    "productName": "Revolution CT (Rev 160)"
+  }
+}

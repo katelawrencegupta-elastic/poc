@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "d34923a2-4d4b-cd7e-296d-7e83b47a99c9": {
+      "80mm": {
+        "failed_modules": [],
+        "status": "PASS"
+      },
+      "map": {
+        "collimation": "80",
+        "dataset": "cal-data-mode-pcd-non-spectral",
+        "is_bad": {},
+        "is_bad_count": 0,
+        "vector_type": "system_lpp_map"
+      }
+    },
+    "specid": "sysService_v1",
+    "status": "pass"
+  },
+  "meta": {
+    "sysid": "CTCLE51",
+    "hospital": "Cleveland Clinic Main Campus",
+    "machine_type": "Clinical",
+    "site_id": "cleveland",
+    "productName": "Revolution CT (Rev 160)"
+  }
+}

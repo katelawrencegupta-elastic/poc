@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "4adc9ba6-ac48-eb86-c610-d98e9f34360a": {
+      "80mm": {
+        "failed_modules": [],
+        "status": "PASS"
+      },
+      "map": {
+        "collimation": "80",
+        "dataset": "cal-data-mode-pcd-non-spectral",
+        "is_bad": {},
+        "is_bad_count": 0,
+        "vector_type": "system_lpp_map"
+      }
+    },
+    "specid": "sysService_v1",
+    "status": "pass"
+  },
+  "meta": {
+    "sysid": "CTGHE01",
+    "hospital": "GE HealthCare Florence Campus",
+    "machine_type": "Internal",
+    "site_id": "gehq_east",
+    "productName": "Revolution CT (Rev 160)"
+  }
+}

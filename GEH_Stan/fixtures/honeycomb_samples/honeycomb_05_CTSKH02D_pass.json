@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "a0aedb35-e727-468c-b0ac-5a8b0dbf8e69": {
+      "80mm": {
+        "failed_modules": [],
+        "status": "PASS"
+      },
+      "map": {
+        "collimation": "80",
+        "dataset": "cal-data-mode-pcd-non-spectral",
+        "is_bad": {},
+        "is_bad_count": 0,
+        "vector_type": "system_lpp_map"
+      }
+    },
+    "specid": "sysService_v1",
+    "status": "pass"
+  },
+  "meta": {
+    "sysid": "CTSKH02D",
+    "hospital": "The Hospital for Sick Children",
+    "machine_type": "Demo",
+    "site_id": "toronto_sickkids",
+    "productName": "Revolution Apex Elite (160)"
+  }
+}
