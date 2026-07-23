@@ -93,7 +93,7 @@ python -m geh_synthetic semantic --to-elastic --refresh --verify
 | Stream | Default index |
 |--------|----------------|
 | Indicators | each doc `_index` (e.g. `ct_sitedata_ext2_indicator_events_m-2026.07.01`), fallback `ct_sitedata_ext2_indicator_events_m` |
-| Honeycomb | `ct_detector_lpp_honeycomb` |
+| Honeycomb | `pcd_detector_lpp_honeycomb` |
 | Repairs | `ct_system_repair_history` |
 | Manuals | `ct_device_manuals` |
 | Parts | `ct_machine_parts` |
@@ -101,6 +101,41 @@ python -m geh_synthetic semantic --to-elastic --refresh --verify
 Semantic NL search uses a `semantic_search` (`semantic_text`) field on manuals (+ lookup copy), repairs, and parts. Override the inference endpoint with `--inference-id` or `ELASTIC_SEMANTIC_INFERENCE_ID` (default `.elser-2-elastic`).
 
 Overrides: `--elastic-url`, `--index`, `--indicator-index`, `--honeycomb-index`, or `ELASTIC_*` env vars.
+
+## Kibana dashboards
+
+Upsert the fleet overview + hospital detail dashboards (Kibana Dashboards API):
+
+```bash
+python -m geh_synthetic dashboards
+```
+
+| Dashboard | ID | Contents |
+|-----------|----|----------|
+| Fleet overview | `geh-fleet-overview` | Distinct hospitals / machine types / sysIds; US-state choropleth of machine counts; hospital table (`# of machines`, `# of machine types`, `# of Critical Issues Found`) with drilldown |
+| Hospital detail | `geh-hospital-detail` | Critical & Warning by sysId & hospital with device-manual LOOKUP; top messages; repair history; parts/BOM lists |
+
+Open:
+
+- Overview: `https://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/app/dashboards#/view/geh-fleet-overview`
+- Detail: `https://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/app/dashboards#/view/geh-hospital-detail`
+
+Definitions live in `kibana/dashboards/*.json`. Drilldown: from the hospital table, apply a hospital filter (or use the panel drilldown action) to open the detail dashboard with filters/time range carried forward.
+
+## Alerting rule + AI email workflow
+
+Upsert the PCD collimation FAIL + CT Critical correlation rule and workflow:
+
+```bash
+python -m geh_synthetic alerts
+```
+
+| Asset | ID | Behavior |
+|-------|----|----------|
+| Rule | tag `geh:pcd-collimation-fail-critical` | ES\|QL over `pcd*` + `ct*`: `collimation_status.keyword == "FAIL"` and `indicator_severity` Critical (case-insensitive `CRITICAL`) correlated by `sysid` |
+| Workflow | `pcd-collimation-fail-critical-summary` | On alert: fetch PCD FAIL + Critical indicators for the sysid, AI-summarize PCD failures, email `kate.lawrencegupta@elastic.co` via `Elastic-Cloud-SMTP` |
+
+Definitions: `kibana/rules/pcd-collimation-fail-critical.json`, `kibana/workflows/pcd-collimation-fail-critical-summary.yaml`.
 
 ## Sample data
 

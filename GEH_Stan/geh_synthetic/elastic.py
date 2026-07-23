@@ -17,7 +17,7 @@ DEFAULT_ELASTIC_URL = (
 )
 
 DEFAULT_INDICATOR_INDEX = "ct_sitedata_ext2_indicator_events_m"
-DEFAULT_HONEYCOMB_INDEX = "ct_detector_lpp_honeycomb"
+DEFAULT_HONEYCOMB_INDEX = "pcd_detector_lpp_honeycomb"
 DEFAULT_REPAIR_INDEX = "ct_system_repair_history"
 DEFAULT_MANUAL_INDEX = "ct_device_manuals"
 DEFAULT_PARTS_INDEX = "ct_machine_parts"

@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "0a8dc2d9-fb7c-c2a9-9bfd-200f65717c5f": {
+      "80mm": {
+        "failed_modules": [],
+        "status": "PASS"
+      },
+      "map": {
+        "collimation": "80",
+        "dataset": "cal-data-mode-pcd-non-spectral",
+        "is_bad": {},
+        "is_bad_count": 0,
+        "vector_type": "system_lpp_map"
+      }
+    },
+    "specid": "sysService_v1",
+    "status": "pass"
+  },
+  "meta": {
+    "sysid": "CTUHN32",
+    "hospital": "University Health Network",
+    "machine_type": "Clinical",
+    "site_id": "uhn_tor",
+    "productName": "Revolution Apex Elite (160)"
+  }
+}

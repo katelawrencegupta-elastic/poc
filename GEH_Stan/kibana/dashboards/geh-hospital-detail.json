@@ -1,0 +1,318 @@
+{
+  "title": "GEH Hospital Detail \u2014 Issues, Repairs, Parts & Manuals",
+  "description": "Hospital drilldown: Critical/Warning messages by sysId & hospital, correlated with repair history, part lists, and device manuals.",
+  "time_range": {
+    "from": "2026-07-01T00:00:00.000Z",
+    "to": "now"
+  },
+  "query": {
+    "language": "kql",
+    "expression": ""
+  },
+  "panels": [
+    {
+      "type": "vis",
+      "id": "m-critical",
+      "grid": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 5
+      },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_sitedata_ext2_indicator_events_m-2026.07.01\n| WHERE indicator_severity == \"Critical\"\n| STATS `Critical Issues` = COUNT(*)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "Critical Issues"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "m-warning",
+      "grid": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 5
+      },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_sitedata_ext2_indicator_events_m-2026.07.01\n| WHERE indicator_severity == \"Warning\"\n| STATS `Warning Issues` = COUNT(*)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "Warning Issues"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "m-sys",
+      "grid": {
+        "x": 24,
+        "y": 0,
+        "w": 12,
+        "h": 5
+      },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_sitedata_ext2_indicator_events_m-2026.07.01\n| STATS `Systems` = COUNT_DISTINCT(sysid)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "Systems"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "m-repairs",
+      "grid": {
+        "x": 36,
+        "y": 0,
+        "w": 12,
+        "h": 5
+      },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_system_repair_history\n| STATS `Repair WOs` = COUNT(*)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "Repair WOs"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "tbl-sys-summary",
+      "grid": {
+        "x": 0,
+        "y": 5,
+        "w": 48,
+        "h": 12
+      },
+      "config": {
+        "title": "Critical & Warning by sysId / Hospital (correlated device manuals)",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_sitedata_ext2_indicator_events_m-2026.07.01\n| WHERE indicator_severity IN (\"Critical\", \"Warning\")\n| STATS\n    Critical = COUNT(CASE(indicator_severity == \"Critical\", 1)),\n    Warnings = COUNT(CASE(indicator_severity == \"Warning\", 1))\n  BY hospital, sysid, machine_type, systype, productName, state\n| LOOKUP JOIN ct_device_manuals_lookup ON systype\n| KEEP hospital, sysid, machine_type, systype, productName, state, Critical, Warnings, title, manual_id, version\n| SORT Critical DESC\n| LIMIT 100"
+        },
+        "rows": [
+          {
+            "column": "hospital"
+          },
+          {
+            "column": "sysid"
+          },
+          {
+            "column": "machine_type"
+          },
+          {
+            "column": "systype"
+          },
+          {
+            "column": "productName"
+          },
+          {
+            "column": "state"
+          }
+        ],
+        "metrics": [
+          {
+            "column": "Critical"
+          },
+          {
+            "column": "Warnings"
+          },
+          {
+            "column": "title"
+          },
+          {
+            "column": "manual_id"
+          },
+          {
+            "column": "version"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "tbl-messages",
+      "grid": {
+        "x": 0,
+        "y": 17,
+        "w": 48,
+        "h": 14
+      },
+      "config": {
+        "title": "Top Critical & Warning messages by sysId & hospital",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_sitedata_ext2_indicator_events_m-2026.07.01\n| WHERE indicator_severity IN (\"Critical\", \"Warning\")\n| STATS Occurrences = COUNT(*) BY hospital, sysid, indicator_severity, event_type, indicator_message\n| SORT Occurrences DESC\n| LIMIT 200"
+        },
+        "rows": [
+          {
+            "column": "hospital"
+          },
+          {
+            "column": "sysid"
+          },
+          {
+            "column": "indicator_severity"
+          },
+          {
+            "column": "event_type"
+          },
+          {
+            "column": "indicator_message"
+          }
+        ],
+        "metrics": [
+          {
+            "column": "Occurrences"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "tbl-repairs",
+      "grid": {
+        "x": 0,
+        "y": 31,
+        "w": 48,
+        "h": 14
+      },
+      "config": {
+        "title": "Repair history (correlated by hospital / sysId)",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_system_repair_history\n| STATS WOs = COUNT(*), `Labor Hours` = SUM(labor_hours)\n  BY hospital, sysid, machine_type, work_order_id, opened_at, status, priority, failure_code, subsystem, symptom, resolution, field_engineer\n| SORT opened_at DESC\n| LIMIT 200"
+        },
+        "rows": [
+          {
+            "column": "hospital"
+          },
+          {
+            "column": "sysid"
+          },
+          {
+            "column": "work_order_id"
+          },
+          {
+            "column": "opened_at"
+          },
+          {
+            "column": "status"
+          },
+          {
+            "column": "priority"
+          },
+          {
+            "column": "failure_code"
+          },
+          {
+            "column": "subsystem"
+          },
+          {
+            "column": "symptom"
+          },
+          {
+            "column": "resolution"
+          },
+          {
+            "column": "field_engineer"
+          }
+        ],
+        "metrics": [
+          {
+            "column": "WOs"
+          },
+          {
+            "column": "Labor Hours"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "tbl-parts",
+      "grid": {
+        "x": 0,
+        "y": 45,
+        "w": 48,
+        "h": 12
+      },
+      "config": {
+        "title": "Machine parts / BOM lists by sysId",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_machine_parts\n| KEEP hospital, sysid, machine_type, systype, productName, sw_version, parts_count, bom_version, subsystems, failure_codes\n| SORT hospital, sysid\n| LIMIT 200"
+        },
+        "rows": [
+          {
+            "column": "hospital"
+          },
+          {
+            "column": "sysid"
+          },
+          {
+            "column": "machine_type"
+          },
+          {
+            "column": "systype"
+          },
+          {
+            "column": "productName"
+          },
+          {
+            "column": "sw_version"
+          },
+          {
+            "column": "bom_version"
+          },
+          {
+            "column": "subsystems"
+          },
+          {
+            "column": "failure_codes"
+          }
+        ],
+        "metrics": [
+          {
+            "column": "parts_count"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "name": "PCD Collimation FAIL with Critical Indicators by sysid",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "enabled": true,
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "geh",
+    "pcd",
+    "collimation",
+    "geh:pcd-collimation-fail-critical"
+  ],
+  "params": {
+    "searchType": "esqlQuery",
+    "timeWindowSize": 90,
+    "timeWindowUnit": "d",
+    "threshold": [0],
+    "thresholdComparator": ">",
+    "size": 10,
+    "esqlQuery": {
+      "esql": "FROM pcd*, ct*\n| WHERE collimation_status.keyword == \"FAIL\" OR TO_UPPER(indicator_severity.keyword) == \"CRITICAL\"\n| EVAL is_pcd_fail = CASE(collimation_status.keyword == \"FAIL\", 1, 0)\n| EVAL is_critical = CASE(TO_UPPER(indicator_severity.keyword) == \"CRITICAL\", 1, 0)\n| STATS\n    pcd_fail_count = SUM(is_pcd_fail),\n    critical_count = SUM(is_critical),\n    latest_event = MAX(@timestamp)\n  BY sysid.keyword\n| WHERE pcd_fail_count > 0 AND critical_count > 0\n| RENAME `sysid.keyword` AS sysid\n| KEEP sysid, pcd_fail_count, critical_count, latest_event\n| SORT latest_event DESC"
+    },
+    "aggType": "count",
+    "groupBy": "row",
+    "termSize": 5,
+    "sourceFields": [],
+    "timeField": "@timestamp",
+    "excludeHitsFromPreviousRun": true
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "pcd-collimation-fail-critical-summary",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ],
+  "alert_delay": {
+    "active": 1
+  }
+}

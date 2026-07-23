@@ -27,6 +27,16 @@ from .elastic import (
     index_repairs,
     ping,
 )
+from .kibana import (
+    DEFAULT_KIBANA_URL,
+    DETAIL_DASHBOARD_ID,
+    OVERVIEW_DASHBOARD_ID,
+    PCD_COLLIMATION_WORKFLOW_ID,
+    KibanaConfig,
+    dashboard_url,
+    deploy_geh_dashboards,
+    deploy_pcd_collimation_rule_and_workflow,
+)
 from .envfile import load_dotenv
 from .honeycomb import (
     HoneycombConfig,
@@ -615,6 +625,63 @@ def _cmd_semantic(args: argparse.Namespace) -> int:
     return 1 if err_total else 0
 
 
+def _cmd_dashboards(args: argparse.Namespace) -> int:
+    es = _elastic_config(args)
+    kbn = KibanaConfig.from_env(
+        url=args.kibana_url,
+        api_key=args.api_key,
+        username=args.user,
+        password=args.password,
+        verify_certs=False if args.insecure else None,
+        elastic=es,
+    )
+    directory = Path(args.definitions_dir) if args.definitions_dir else None
+    results = deploy_geh_dashboards(kbn, directory=directory)
+    for dashboard_id, payload in results.items():
+        title = payload.get("data", {}).get("title", dashboard_id)
+        print(
+            f"{dashboard_id}: {title}\n  {dashboard_url(kbn, dashboard_id)}",
+            file=sys.stderr,
+        )
+    print(
+        f"overview={OVERVIEW_DASHBOARD_ID} detail={DETAIL_DASHBOARD_ID}",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def _cmd_alerts(args: argparse.Namespace) -> int:
+    es = _elastic_config(args)
+    kbn = KibanaConfig.from_env(
+        url=args.kibana_url,
+        api_key=args.api_key,
+        username=args.user,
+        password=args.password,
+        verify_certs=False if args.insecure else None,
+        elastic=es,
+    )
+    result = deploy_pcd_collimation_rule_and_workflow(
+        kbn,
+        workflow_directory=Path(args.workflow_dir) if args.workflow_dir else None,
+        rule_directory=Path(args.rule_dir) if args.rule_dir else None,
+    )
+    rule = result["rule"]
+    print(
+        f"workflow={result['workflow_id']} enabled={result['workflow'].get('enabled')}\n"
+        f"  {result['workflow_url']}\n"
+        f"rule={rule.get('name')} id={result['rule_id']} enabled={rule.get('enabled')}\n"
+        f"  {result['rule_url']}",
+        file=sys.stderr,
+    )
+    print(json.dumps({
+        "workflow_id": result["workflow_id"],
+        "rule_id": result["rule_id"],
+        "workflow_url": result["workflow_url"],
+        "rule_url": result["rule_url"],
+    }))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="geh_synthetic",
@@ -917,6 +984,51 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_elastic_args(sem)
     sem.set_defaults(func=_cmd_semantic)
+
+    dash = sub.add_parser(
+        "dashboards",
+        help=(
+            "Upsert GEH Kibana dashboards (fleet overview + hospital detail "
+            "with hospital drilldown)"
+        ),
+    )
+    dash.add_argument(
+        "--kibana-url",
+        default=None,
+        help=f"Kibana URL (or KIBANA_URL; default: {DEFAULT_KIBANA_URL})",
+    )
+    dash.add_argument(
+        "--definitions-dir",
+        default=None,
+        help="Directory containing geh-*.json dashboard definitions",
+    )
+    _add_elastic_args(dash)
+    dash.set_defaults(func=_cmd_dashboards, to_elastic=True)
+
+    alerts = sub.add_parser(
+        "alerts",
+        help=(
+            "Upsert PCD collimation FAIL + Critical-by-sysid alerting rule "
+            f"and AI email workflow ({PCD_COLLIMATION_WORKFLOW_ID})"
+        ),
+    )
+    alerts.add_argument(
+        "--kibana-url",
+        default=None,
+        help=f"Kibana URL (or KIBANA_URL; default: {DEFAULT_KIBANA_URL})",
+    )
+    alerts.add_argument(
+        "--workflow-dir",
+        default=None,
+        help="Directory containing workflow YAML definitions",
+    )
+    alerts.add_argument(
+        "--rule-dir",
+        default=None,
+        help="Directory containing alerting rule JSON definitions",
+    )
+    _add_elastic_args(alerts)
+    alerts.set_defaults(func=_cmd_alerts, to_elastic=True)
 
     return p
 

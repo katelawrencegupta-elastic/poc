@@ -1,0 +1,79 @@
+{
+  "payload": {
+    "8e810511-f4d9-4ef9-1cd8-35baf2d8e14e": {
+      "80mm": {
+        "failed_modules": [
+          50
+        ],
+        "status": "FAIL"
+      },
+      "map": {
+        "collimation": "80",
+        "dataset": "cal-data-mode-pcd-non-spectral",
+        "is_bad": {
+          "50": [
+            989,
+            1851
+          ],
+          "64": [
+            692,
+            981,
+            1135,
+            1976
+          ],
+          "75": [
+            390,
+            470,
+            1574,
+            1918
+          ],
+          "89": [
+            328,
+            489,
+            1078,
+            1126,
+            1663
+          ],
+          "122": [
+            2388
+          ],
+          "126": [
+            1046,
+            1487,
+            2128,
+            2407
+          ],
+          "168": [
+            106,
+            432,
+            715,
+            901,
+            1532,
+            1827,
+            2141,
+            2221
+          ],
+          "189": [
+            186,
+            796,
+            1445,
+            2191,
+            2317,
+            2487
+          ]
+        },
+        "is_bad_count": 34,
+        "vector_type": "system_lpp_map"
+      }
+    },
+    "specid": "sysService_v1",
+    "status": "fail"
+  },
+  "meta": {
+    "sysid": "CTKAR72",
+    "hospital": "Karolinska University Hospital",
+    "machine_type": "Clinical",
+    "site_id": "karolinska",
+    "productName": "Revolution Apex Elite (160)"
+  }
+}

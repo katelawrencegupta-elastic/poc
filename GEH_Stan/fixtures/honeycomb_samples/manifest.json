@@ -1,38 +1,14 @@
 [
   {
-    "file": "honeycomb_00_CTKAR71_fail.json",
-    "status": "fail",
-    "sysid": "CTKAR71",
-    "hospital": "Karolinska University Hospital",
-    "machine_type": "Clinical",
-    "is_bad_count": 194
-  },
-  {
-    "file": "honeycomb_01_CTCSM22D_fail.json",
-    "status": "fail",
+    "file": "honeycomb_00_CTCSM22D_pass.json",
+    "status": "pass",
     "sysid": "CTCSM22D",
     "hospital": "Cedars-Sinai Medical Center",
     "machine_type": "Demo",
-    "is_bad_count": 416
-  },
-  {
-    "file": "honeycomb_02_CTJHH62D_pass.json",
-    "status": "pass",
-    "sysid": "CTJHH62D",
-    "hospital": "Johns Hopkins Hospital",
-    "machine_type": "Demo",
     "is_bad_count": 0
   },
   {
-    "file": "honeycomb_03_CTAPHP01_pass.json",
-    "status": "pass",
-    "sysid": "CTAPHP01",
-    "hospital": "AP-HP Pitie-Salpetriere",
-    "machine_type": "Clinical",
-    "is_bad_count": 0
-  },
-  {
-    "file": "honeycomb_04_CTKAR72_pass.json",
+    "file": "honeycomb_01_CTKAR72_pass.json",
     "status": "pass",
     "sysid": "CTKAR72",
     "hospital": "Karolinska University Hospital",
@@ -40,59 +16,83 @@
     "is_bad_count": 0
   },
   {
-    "file": "honeycomb_05_CTSKH02D_pass.json",
-    "status": "pass",
-    "sysid": "CTSKH02D",
-    "hospital": "The Hospital for Sick Children",
-    "machine_type": "Demo",
-    "is_bad_count": 0
-  },
-  {
-    "file": "honeycomb_06_CTCLE51_fail.json",
+    "file": "honeycomb_02_CTUHN31_fail.json",
     "status": "fail",
-    "sysid": "CTCLE51",
-    "hospital": "Cleveland Clinic Main Campus",
+    "sysid": "CTUHN31",
+    "hospital": "University Health Network",
     "machine_type": "Clinical",
-    "is_bad_count": 249
+    "is_bad_count": 251
   },
   {
-    "file": "honeycomb_07_CTSHC92_fail.json",
-    "status": "fail",
-    "sysid": "CTSHC92",
-    "hospital": "Stanford Health Care",
-    "machine_type": "Clinical",
-    "is_bad_count": 115
-  },
-  {
-    "file": "honeycomb_08_CTKAR71_fail.json",
-    "status": "fail",
-    "sysid": "CTKAR71",
-    "hospital": "Karolinska University Hospital",
-    "machine_type": "Clinical",
-    "is_bad_count": 176
-  },
-  {
-    "file": "honeycomb_09_CTCLE51_pass.json",
-    "status": "pass",
-    "sysid": "CTCLE51",
-    "hospital": "Cleveland Clinic Main Campus",
-    "machine_type": "Clinical",
-    "is_bad_count": 0
-  },
-  {
-    "file": "honeycomb_10_CTCLE51_fail.json",
-    "status": "fail",
-    "sysid": "CTCLE51",
-    "hospital": "Cleveland Clinic Main Campus",
-    "machine_type": "Clinical",
-    "is_bad_count": 279
-  },
-  {
-    "file": "honeycomb_11_CTGHE01_pass.json",
+    "file": "honeycomb_03_CTGHE01_pass.json",
     "status": "pass",
     "sysid": "CTGHE01",
     "hospital": "GE HealthCare Florence Campus",
     "machine_type": "Internal",
+    "is_bad_count": 0
+  },
+  {
+    "file": "honeycomb_04_CTNMH02D_pass.json",
+    "status": "pass",
+    "sysid": "CTNMH02D",
+    "hospital": "Northwestern Memorial Hospital",
+    "machine_type": "Demo",
+    "is_bad_count": 0
+  },
+  {
+    "file": "honeycomb_05_CTMGH12_pass.json",
+    "status": "pass",
+    "sysid": "CTMGH12",
+    "hospital": "Massachusetts General Hospital",
+    "machine_type": "Clinical",
+    "is_bad_count": 0
+  },
+  {
+    "file": "honeycomb_06_CTAPHP01_fail.json",
+    "status": "fail",
+    "sysid": "CTAPHP01",
+    "hospital": "AP-HP Pitie-Salpetriere",
+    "machine_type": "Clinical",
+    "is_bad_count": 188
+  },
+  {
+    "file": "honeycomb_07_CTGHE01_fail.json",
+    "status": "fail",
+    "sysid": "CTGHE01",
+    "hospital": "GE HealthCare Florence Campus",
+    "machine_type": "Internal",
+    "is_bad_count": 180
+  },
+  {
+    "file": "honeycomb_08_CTKAR72_fail.json",
+    "status": "fail",
+    "sysid": "CTKAR72",
+    "hospital": "Karolinska University Hospital",
+    "machine_type": "Clinical",
+    "is_bad_count": 34
+  },
+  {
+    "file": "honeycomb_09_CTCHA41_fail.json",
+    "status": "fail",
+    "sysid": "CTCHA41",
+    "hospital": "Charite \u2013 Universitaetsmedizin Berlin",
+    "machine_type": "Clinical",
+    "is_bad_count": 144
+  },
+  {
+    "file": "honeycomb_10_CTUHN32_pass.json",
+    "status": "pass",
+    "sysid": "CTUHN32",
+    "hospital": "University Health Network",
+    "machine_type": "Clinical",
+    "is_bad_count": 0
+  },
+  {
+    "file": "honeycomb_11_CTSHC92_pass.json",
+    "status": "pass",
+    "sysid": "CTSHC92",
+    "hospital": "Stanford Health Care",
+    "machine_type": "Clinical",
     "is_bad_count": 0
   }
 ]

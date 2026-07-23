@@ -1,0 +1,198 @@
+{
+  "title": "GEH Fleet Overview \u2014 Hospitals, Machines & Critical Issues",
+  "description": "Fleet KPIs (distinct hospitals, machine types, sysIds), US-state choropleth of which states have sysIds, and hospital table with drilldown to hospital detail.",
+  "time_range": {
+    "from": "2026-07-01T00:00:00.000Z",
+    "to": "now"
+  },
+  "query": {
+    "language": "kql",
+    "expression": ""
+  },
+  "panels": [
+    {
+      "type": "vis",
+      "id": "kpi-hospitals",
+      "grid": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 5
+      },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_sitedata_ext2_indicator_events_m-2026.07.01\n| STATS `Hospitals` = COUNT_DISTINCT(hospital)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "Hospitals"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "kpi-mtypes",
+      "grid": {
+        "x": 16,
+        "y": 0,
+        "w": 16,
+        "h": 5
+      },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_sitedata_ext2_indicator_events_m-2026.07.01\n| STATS `Machine Types` = COUNT_DISTINCT(machine_type)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "Machine Types"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "kpi-sysids",
+      "grid": {
+        "x": 32,
+        "y": 0,
+        "w": 16,
+        "h": 5
+      },
+      "config": {
+        "title": "",
+        "type": "metric",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_sitedata_ext2_indicator_events_m-2026.07.01\n| STATS `sysIds` = COUNT_DISTINCT(sysid)"
+        },
+        "metrics": [
+          {
+            "type": "primary",
+            "column": "sysIds"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "map-states-with-sysids",
+      "grid": {
+        "x": 0,
+        "y": 5,
+        "w": 48,
+        "h": 18
+      },
+      "config": {
+        "title": "States with sysIds (choropleth)",
+        "type": "region_map",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_sitedata_ext2_indicator_events_m-2026.07.01\n| WHERE country == \"United States of America\"\n| EVAL state_iso = CONCAT(\"US-\", state)\n| STATS sysIds = COUNT_DISTINCT(sysid) BY state_iso\n| WHERE sysIds > 0"
+        },
+        "region": {
+          "column": "state_iso"
+        },
+        "metric": {
+          "column": "sysIds"
+        }
+      }
+    },
+    {
+      "type": "vis",
+      "id": "tbl-by-hospital",
+      "grid": {
+        "x": 0,
+        "y": 23,
+        "w": 36,
+        "h": 16
+      },
+      "config": {
+        "title": "Machines, machine types & critical issues by Hospital",
+        "type": "data_table",
+        "data_source": {
+          "type": "esql",
+          "query": "FROM ct_sitedata_ext2_indicator_events_m-2026.07.01\n| STATS\n    `# of machines` = COUNT_DISTINCT(sysid),\n    `# of machine types` = COUNT_DISTINCT(machine_type),\n    `# of Critical Issues Found` = COUNT(CASE(indicator_severity == \"Critical\", 1))\n  BY hospital\n| SORT `# of Critical Issues Found` DESC\n| LIMIT 50"
+        },
+        "rows": [
+          {
+            "column": "hospital"
+          }
+        ],
+        "metrics": [
+          {
+            "column": "# of machines"
+          },
+          {
+            "column": "# of machine types"
+          },
+          {
+            "column": "# of Critical Issues Found"
+          }
+        ]
+      }
+    },
+    {
+      "type": "vis",
+      "id": "tbl-hospital-drilldown",
+      "grid": {
+        "x": 36,
+        "y": 23,
+        "w": 12,
+        "h": 16
+      },
+      "config": {
+        "title": "Drilldown by Hospital",
+        "type": "data_table",
+        "data_source": {
+          "type": "data_view_reference",
+          "ref_id": "6f46fd7d-44ba-4a7f-be71-373d033b411b"
+        },
+        "query": {
+          "language": "kql",
+          "expression": ""
+        },
+        "rows": [
+          {
+            "operation": "terms",
+            "fields": [
+              "hospital.keyword"
+            ],
+            "limit": 50,
+            "rank_by": {
+              "type": "metric",
+              "metric_index": 0,
+              "direction": "desc"
+            }
+          }
+        ],
+        "metrics": [
+          {
+            "operation": "unique_count",
+            "field": "sysid.keyword",
+            "label": "sysIds"
+          }
+        ],
+        "drilldowns": [
+          {
+            "type": "dashboard_drilldown",
+            "dashboard_id": "geh-hospital-detail",
+            "label": "Open hospital detail",
+            "trigger": "on_apply_filter",
+            "use_filters": true,
+            "use_time_range": true,
+            "open_in_new_tab": false
+          }
+        ]
+      }
+    }
+  ]
+}

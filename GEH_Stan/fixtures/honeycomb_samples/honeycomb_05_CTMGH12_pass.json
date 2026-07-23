@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "949b7030-9fb8-1994-e990-bf360b6951b3": {
+      "80mm": {
+        "failed_modules": [],
+        "status": "PASS"
+      },
+      "map": {
+        "collimation": "80",
+        "dataset": "cal-data-mode-pcd-non-spectral",
+        "is_bad": {},
+        "is_bad_count": 0,
+        "vector_type": "system_lpp_map"
+      }
+    },
+    "specid": "sysService_v1",
+    "status": "pass"
+  },
+  "meta": {
+    "sysid": "CTMGH12",
+    "hospital": "Massachusetts General Hospital",
+    "machine_type": "Clinical",
+    "site_id": "massgen",
+    "productName": "Revolution Apex Elite (160)"
+  }
+}

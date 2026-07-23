@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "cb6e16b3-6356-3e6e-fdae-c44eef2bcaab": {
+      "80mm": {
+        "failed_modules": [],
+        "status": "PASS"
+      },
+      "map": {
+        "collimation": "80",
+        "dataset": "cal-data-mode-pcd-non-spectral",
+        "is_bad": {},
+        "is_bad_count": 0,
+        "vector_type": "system_lpp_map"
+      }
+    },
+    "specid": "sysService_v1",
+    "status": "pass"
+  },
+  "meta": {
+    "sysid": "CTNMH02D",
+    "hospital": "Northwestern Memorial Hospital",
+    "machine_type": "Demo",
+    "site_id": "northwestern",
+    "productName": "Revolution Apex Elite (160)"
+  }
+}
