@@ -1,0 +1,13 @@
+{
+  "id": "platform.workflows.get_examples",
+  "type": "builtin",
+  "description": "Search and retrieve example workflow YAML files from the bundled library.\n\n**When to use:** Before generating workflow YAML, to learn correct syntax patterns for triggers, steps, inputs, on-failure handling, etc.\n**When NOT to use:** To find workflows in the user's environment (use sml_search instead).\n\nAvailable categories: security, integrations, examples, utilities, search.\nSupports keyword search across names, descriptions, and tags.",
+  "tags": [
+    "workflows",
+    "yaml",
+    "examples"
+  ],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

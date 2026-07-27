@@ -1,0 +1,9 @@
+{
+  "id": "platform.core.list_workflow_executions",
+  "type": "builtin",
+  "description": "List recent workflow executions in the current space.\n\nUse this tool when you need to find an execution but do not have an execution ID.\nResults are sorted most-recent first.\nOnce you have an executionId from the results, call platform.core.get_workflow_execution_status\nto retrieve the full execution details and output.\nNote: date range, trigger type filtering, and cursor-based pagination are not yet supported.",
+  "tags": [],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

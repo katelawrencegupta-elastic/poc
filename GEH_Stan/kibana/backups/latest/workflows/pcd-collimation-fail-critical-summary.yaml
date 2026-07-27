@@ -1,0 +1,155 @@
+version: "1"
+name: PCD Collimation FAIL + Critical — AI Summary Email
+enabled: true
+description: >
+  When a system has PCD collimation_status FAIL and CT Critical indicators
+  for the same sysid, summarize the PCD failure context with AI and email
+  kate.lawrencegupta@elastic.co.
+triggers:
+  - type: alert
+steps:
+  - name: extract_sysid
+    type: data.set
+    with:
+      # Keep this on one Liquid line so YAML indentation cannot pad the value.
+      sysid: "{%- assign g = event.alerts[0].kibana.alert.grouping -%}{%- assign s = g.sysid -%}{%- if s == nil or s == '' -%}{%- assign s = g['sysid.keyword'] -%}{%- endif -%}{%- if s == nil or s == '' -%}{%- assign s = event.alerts[0].kibana.alert.context.sysid -%}{%- endif -%}{%- if s == nil or s == '' -%}{%- assign s = event.alerts[0].kibana.alert.rule.parameters.sysid -%}{%- endif -%}{{ s | strip }}"
+
+  - name: fetch_pcd_failures
+    type: elasticsearch.esql.query
+    with:
+      format: json
+      query: |
+        FROM pcd_detector_lpp_honeycomb
+        | WHERE sysid.keyword == "{{ variables.sysid }}"
+            AND collimation_status.keyword == "FAIL"
+        | EVAL failed_module_flag = CASE(is_failed_module == true, 1, 0)
+        | STATS
+            module_docs = COUNT(*),
+            failed_module_docs = SUM(failed_module_flag),
+            max_bad_pixels = MAX(is_bad_count),
+            latest_pcd = MAX(@timestamp)
+          BY sysid.keyword, session_id.keyword, collimation.keyword, collimation_status.keyword
+        | SORT latest_pcd DESC
+        | LIMIT 50
+
+  - name: fetch_critical_indicators
+    type: elasticsearch.esql.query
+    with:
+      format: json
+      query: |
+        FROM ct_sitedata_ext2_indicator_events_m*
+        | WHERE sysid.keyword == "{{ variables.sysid }}"
+            AND TO_UPPER(indicator_severity.keyword) == "CRITICAL"
+        | KEEP @timestamp, sysid, event_type, indicator_severity, indicator_message,
+               indicator_id, hospital, customer, productName, systype, machine_type,
+               sw_version, exam_number, ifr_event_name, ifr_event_protocol_name,
+               ifr_event_category
+        | SORT @timestamp DESC
+        | LIMIT 50
+
+  - name: resolve_systype
+    type: data.set
+    with:
+      systype: "{%- assign alert_sys = event.alerts[0].kibana.alert.grouping.systype -%}{%- if alert_sys and alert_sys != '' -%}{{ alert_sys | strip }}{%- endif -%}"
+
+  - name: fetch_device_manual
+    type: elasticsearch.search
+    with:
+      index: ct_device_manuals
+      size: 1
+      query:
+        term:
+          systype.keyword: "{{ variables.systype }}"
+      _source:
+        - manual_id
+        - title
+        - version
+        - systype
+        - productName
+        - overview
+        - safety
+        - escalation
+
+  - name: summarize_pcd_failure
+    type: ai.summarize
+    with:
+      input: |
+        SYSTEM_ID: {{ variables.sysid }}
+        ALERT_RULE: {{ event.rule.name }}
+        ALERT_REASON: {{ event.alerts[0].kibana.alert.reason }}
+        ALERT_GROUPING_JSON: ${{ event.alerts[0].kibana.alert.grouping | json }}
+
+        PCD_COLLIMATION_FAIL_SUMMARY_ROWS_JSON:
+        ${{ steps.fetch_pcd_failures.output.values | json }}
+
+        PCD_COLLIMATION_FAIL_COLUMNS_JSON:
+        ${{ steps.fetch_pcd_failures.output.columns | json }}
+
+        CT_CRITICAL_INDICATORS_ROWS_JSON:
+        ${{ steps.fetch_critical_indicators.output.values | json }}
+      instructions: |
+        You are a CT detector / PCD field-service reliability analyst. An alert
+        fired for system "{{ variables.sysid }}".
+
+        Using the PCD failure summary rows and Critical indicator history:
+        1. Summarize the PCD / collimation failure: sessions, collimation values,
+           failed modules, bad-pixel counts, and timing.
+        2. Summarize the Critical indicator pattern for this sysid (event types,
+           key messages, protocols/categories if present).
+        3. Correlate PCD FAIL with Critical indicators on the same sysid: what
+           clinical / subsystem risk does the combination imply?
+        4. Recommend concise next field actions (module swap, recalibration,
+           LPP re-run, parts to stage, escalation).
+
+        Format with clear sections and bullet points for a field service manager.
+        If the PCD rows array is empty, say explicitly that no PCD FAIL documents
+        were found for this exact sysid in pcd_detector_lpp_honeycomb, and still
+        summarize Critical indicators. Do not invent PCD failure details.
+        Focus the email narrative on PCD failures when rows exist.
+
+  - name: send_email_summary
+    type: email
+    connector-id: Elastic-Cloud-SMTP
+    with:
+      to:
+        - kate.lawrencegupta@elastic.co
+      subject: "PCD Collimation FAIL + Critical — AI Summary for {{ variables.sysid }}"
+      message: |
+        PCD Collimation FAIL with CT Critical Indicators
+        ================================================
+        System ID : {{ variables.sysid }}
+        Alert Rule : {{ event.rule.name }}
+        Triggered  : {{ event.alerts[0]["@timestamp"] }}
+
+        PCD FAIL summary rows   : {{ steps.fetch_pcd_failures.output.values | size }}
+        Critical indicator rows : {{ steps.fetch_critical_indicators.output.values | size }}
+
+        ── AI Summary (PCD failures) ────────────────────────────────────────
+
+        {{ steps.summarize_pcd_failure.output.content }}
+
+        ── Device Manual (ct_device_manuals) ─────────────────────────────────
+        {%- assign manual = steps.fetch_device_manual.output.hits.hits[0]._source -%}
+        {%- if manual and manual.manual_id -%}
+        Title    : {{ manual.title }}
+        Version  : {{ manual.version }}
+        Systype  : {{ manual.systype }}
+        Manual ID: {{ manual.manual_id }}
+
+        Overview:
+        {{ manual.overview }}
+
+        Open full manual in Kibana:
+        https://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/app/discover#/doc/default_all_data_id/ct_device_manuals?id={{ manual.manual_id }}
+        {%- else -%}
+        No matching device manual found in ct_device_manuals for systype "{{ variables.systype }}".
+        {%- endif -%}
+
+        ── Alert Details ────────────────────────────────────────────────────
+        Alert ID   : {{ event.alerts[0]._id }}
+        Index      : {{ event.alerts[0]._index }}
+        Reason     : {{ event.alerts[0].kibana.alert.reason }}
+
+        --
+        This email was automatically generated by the PCD collimation FAIL +
+        Critical AI summary workflow.

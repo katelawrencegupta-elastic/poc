@@ -1,0 +1,11 @@
+{
+  "id": "platform.streams.create_partition",
+  "type": "builtin",
+  "description": "Creates a child stream (partition) under a parent wired stream with a routing condition. This tool MUTATES state \u2014 only call when the user explicitly asks to create a partition, route, or child stream.\n\n**Cancellation:** If this tool returns \"The user chose not to proceed with this action\", stop immediately, acknowledge, and ask how to proceed. Do NOT retry.\n\nChild names MUST follow the parent.childname convention: for parent \"logs.ecs\", use \"logs.ecs.nginx\"; for parent \"logs.otel\", use \"logs.otel.nginx\".\n\nOnly works on wired streams. When creating multiple children under the same parent, call this tool sequentially (they modify the parent's routing table). Children under different parents can be created in parallel.",
+  "tags": [
+    "streams"
+  ],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

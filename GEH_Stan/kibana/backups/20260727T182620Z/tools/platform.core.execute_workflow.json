@@ -1,0 +1,9 @@
+{
+  "id": "platform.core.execute_workflow",
+  "type": "builtin",
+  "description": "Execute an Elastic workflow.\n\nUse this tool when:\n\u2014 The user asks to run, trigger or execute a workflow.\n\u2014 You need to run a workflow you just generated (e.g. via `generate_workflow`).\n\n## Source \u2014 exactly one must be provided\n\n- `workflowId`: a persisted workflow id (the workflow must be saved and enabled).\n- `yaml`: an inline YAML workflow definition; runs ephemerally (no persistence).\n- `attachmentId`: the id of a workflow YAML attachment already in this conversation (as returned by `generate_workflow`).\n\nProviding zero or more than one will return an error.\n\n## Inputs\n\nPass workflow inputs in `inputs`. Make sure the keys/types match the workflow's declared inputs schema.\nIf the workflow has no inputs, omit `inputs` or pass `{}`.\n\n## Wait behaviour\n\n`waitForCompletion` defaults to `true` (up to 120s).\nIf set to false, or if the workflow does not complete within the timeout, the tool returns the in-flight execution and you can poll via `platform.core.get_workflow_execution_status`.\n\n## Follow-ups\n\n- If the returned execution status is `waiting_for_input`, the workflow is paused; resume it with `platform.core.resume_workflow_execution`.\n- If the status is not terminal (still running), call `platform.core.get_workflow_execution_status` later to get the final outcome.",
+  "tags": [],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

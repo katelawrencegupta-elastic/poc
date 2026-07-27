@@ -1,0 +1,13 @@
+{
+  "id": "platform.workflows.validate_workflow",
+  "type": "builtin",
+  "description": "Validate a workflow YAML string against all validation rules.\nUse this tool AFTER generating or modifying workflow YAML and BEFORE proposing changes to the user.\nIt checks YAML syntax, schema conformance, step name uniqueness, and Liquid template syntax.\nWhen validation fails, step type definitions used in the workflow are automatically included to help fix issues.\nIf validation fails, fix the issues and re-validate until the YAML is valid.",
+  "tags": [
+    "workflows",
+    "yaml",
+    "validation"
+  ],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

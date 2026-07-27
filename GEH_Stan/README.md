@@ -170,6 +170,16 @@ Hybrid ranking: BM25 (`multi_match`) + semantic (`indicator_message_semantic`) f
 
 Definitions: `kibana/search_applications/ct-hybrid-search-api.json`, `kibana/workflows/ct-hybrid-search-api.yaml`.
 
+## Elastic backups
+
+Timestamped exports of live Kibana workflows + Agent Builder agents/tools:
+
+- `kibana/backups/latest/` — newest snapshot
+- `kibana/workflows/` — workflow YAML (synced from cluster)
+- `kibana/agents/` — agent JSON (synced from cluster)
+
+See `kibana/backups/README.md`.
+
 ## Sample data
 
 - `sample_data/mock_CT_dynamic_indicator_TestMachineData (1).csv` — Kibana export used as the value catalog (not the emit format)

@@ -1,0 +1,54 @@
+{
+  "backed_up_at": "20260727T182620Z",
+  "kibana_url": "https://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud",
+  "elasticsearch_url": "https://klggehpoc-eb6d47.es.us-central1.gcp.elastic.cloud:443",
+  "workflows": [
+    {
+      "id": "pcd-collimation-fail-critical-summary",
+      "name": "PCD Collimation FAIL + Critical \u2014 AI Summary Email",
+      "enabled": true,
+      "valid": true
+    },
+    {
+      "id": "ct-hybrid-search-api",
+      "name": "CT Hybrid Search API",
+      "enabled": true,
+      "valid": true
+    },
+    {
+      "id": "ct-trend-shutdown-problem-repair-correlation",
+      "name": "CT Trend Shutdown - Problem Reports & Repair Correlation",
+      "enabled": false,
+      "valid": true
+    },
+    {
+      "id": "ct-scanner-critical-alert-repair-history-summary",
+      "name": "CT Scanner - Critical Alert Repair History Summary",
+      "enabled": false,
+      "valid": true
+    }
+  ],
+  "agents": [
+    {
+      "id": "elastic-ai-agent",
+      "name": "Elastic AI Agent",
+      "type": "chat",
+      "readonly": false,
+      "labels": null
+    },
+    {
+      "id": "stan",
+      "name": "Stan",
+      "type": "chat",
+      "readonly": false,
+      "labels": []
+    }
+  ],
+  "tools_total": 32,
+  "tools_non_builtin": [],
+  "paths": {
+    "backup": "kibana/backups/20260727T182620Z",
+    "workflows_live": "kibana/workflows",
+    "agents_live": "kibana/agents"
+  }
+}

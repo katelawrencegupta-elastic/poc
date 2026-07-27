@@ -1,0 +1,12 @@
+{
+  "id": "platform.workflows.get_connectors",
+  "type": "builtin",
+  "description": "Get connector instances configured in the user's environment.\n\n**When to use:** To find connector IDs needed for the `connector-id` field in workflow steps (e.g., which Slack or Jira connectors are available).\n**When NOT to use:** To discover step types and their schemas (use get_step_definitions instead).\n\nReturns connector instances with their ID and name, plus:\n- `actionTypeId`: the Kibana action type ID (e.g. \".slack\")\n- `stepTypes`: workflow step types this connector supports (e.g. [\"inference.completion\", \"inference.rerank\"] for sub-action connectors, or [\"slack\"] for simple connectors)\n\nThe connector `id` is what you put in the `connector-id` field of a workflow step.",
+  "tags": [
+    "workflows",
+    "connectors"
+  ],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

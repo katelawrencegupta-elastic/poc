@@ -1,0 +1,90 @@
+# Synthetic SNMP lab — each device on 127.0.0.1 with a unique UDP port.
+#
+# Optional (macOS, needs sudo) for true multi-IP :161 layout:
+#   ./scripts/setup-loopback-aliases.sh
+#   then switch compose port bindings to 127.0.0.N:161 (see devices.md)
+
+x-snmpsim: &snmpsim
+  image: tandrup/snmpsim:latest
+  platform: linux/amd64
+  restart: unless-stopped
+  environment:
+    EXTRA_FLAGS: >-
+      --v3-user=user7
+      --v3-auth-key=1234567890abcdef
+      --v3-priv-key=1234567890abcdef
+      --v3-auth-proto=SHA
+      --v3-priv-proto=AES128
+
+services:
+  cisco-ios-router:
+    image: docker.io/nasrhassanein/snmpd-cisco:latest
+    platform: linux/amd64
+    container_name: travelers-cisco-ios-router
+    ports:
+      - "127.0.0.1:161:161/udp"
+    restart: unless-stopped
+    labels:
+      travelers.device: "cisco-ios-router"
+      travelers.sys_type: "Cisco ISR 4331 / IOS XE 16.6.2"
+      travelers.host_port: "161"
+
+  cisco-catalyst:
+    <<: *snmpsim
+    container_name: travelers-cisco-catalyst
+    volumes:
+      - ./data/cisco-catalyst:/usr/local/snmpsim/data:ro
+    ports:
+      - "127.0.0.1:1162:161/udp"
+    labels:
+      travelers.device: "cisco-catalyst"
+      travelers.sys_type: "Cisco Catalyst 9300 / IOS XE"
+      travelers.host_port: "1162"
+
+  juniper-ex:
+    <<: *snmpsim
+    container_name: travelers-juniper-ex
+    volumes:
+      - ./data/juniper-ex:/usr/local/snmpsim/data:ro
+    ports:
+      - "127.0.0.1:1163:161/udp"
+    labels:
+      travelers.device: "juniper-ex"
+      travelers.sys_type: "Juniper EX4300 / JUNOS"
+      travelers.host_port: "1163"
+
+  linux-server:
+    <<: *snmpsim
+    container_name: travelers-linux-server
+    volumes:
+      - ./data/linux-server:/usr/local/snmpsim/data:ro
+    ports:
+      - "127.0.0.1:1164:161/udp"
+    labels:
+      travelers.device: "linux-server"
+      travelers.sys_type: "Linux Ubuntu 22.04 / net-snmp"
+      travelers.host_port: "1164"
+
+  windows-server:
+    <<: *snmpsim
+    container_name: travelers-windows-server
+    volumes:
+      - ./data/windows-server:/usr/local/snmpsim/data:ro
+    ports:
+      - "127.0.0.1:1165:161/udp"
+    labels:
+      travelers.device: "windows-server"
+      travelers.sys_type: "Windows Server 2022"
+      travelers.host_port: "1165"
+
+  paloalto-fw:
+    <<: *snmpsim
+    container_name: travelers-paloalto-fw
+    volumes:
+      - ./data/paloalto-fw:/usr/local/snmpsim/data:ro
+    ports:
+      - "127.0.0.1:1166:161/udp"
+    labels:
+      travelers.device: "paloalto-fw"
+      travelers.sys_type: "Palo Alto PA-3220 / PAN-OS"
+      travelers.host_port: "1166"

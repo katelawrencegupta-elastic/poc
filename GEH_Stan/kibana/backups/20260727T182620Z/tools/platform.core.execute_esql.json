@@ -1,0 +1,9 @@
+{
+  "id": "platform.core.execute_esql",
+  "type": "builtin",
+  "description": "Execute an ES|QL query and return the results in a tabular format.\n\n## Usage\n\n**IMPORTANT**: This tool only **runs** queries; it does not write them.\nThink of this as the final step after a query has been prepared.\n\nYou **must** get the query from one of two sources before calling this tool:\n1.  The output of the `platform.core.generate_esql` tool (if the tool is available).\n2.  A verbatim query provided directly by the user.\n\nUnder no circumstances should you invent, guess, or modify a query yourself for this tool.\nIf you need a query, use the `platform.core.generate_esql` tool first.\n\n### Using a limit\n\nThe `limit` parameter can be used to limit the number of results to return. It defaults to 100.\nYou should avoid using a higher limit value unless explicitly asked by the user or if you know for sure the length of the data will not be a problem.\nNote that this option can't be used to increase the number of results if the query already defines a `LIMIT` clause - the lowest limit will always prevail.",
+  "tags": [],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

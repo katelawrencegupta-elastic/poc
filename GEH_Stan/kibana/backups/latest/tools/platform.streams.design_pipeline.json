@@ -1,0 +1,11 @@
+{
+  "id": "platform.streams.design_pipeline",
+  "type": "builtin",
+  "description": "Designs changes to a stream's processing pipeline based on a natural language description. Does NOT apply changes \u2014 pass the result to the update stream tool to commit.\n\nThe tool fetches the stream's current pipeline, naming convention (ECS/OTel), and schema internally. It applies your described change to the existing pipeline, simulates it against sample documents, and returns the full proposed pipeline for review.\n\n**When to use:**\n- Adding new processing steps: \"parse Apache logs from body.text using grok\"\n- Modifying existing steps: \"change the grok pattern to also capture the port\"\n- Removing steps: \"remove the convert step for status\"\n- Building a pipeline from scratch: \"parse syslog, extract timestamps, convert types, and clean up temp fields\"\n\n**When NOT to use:**\n- Inspecting the current pipeline: use the inspect streams tool with aspects: [\"processing\"]\n- Applying the pipeline: pass the returned steps to the update stream tool\n\n**Important:**\n- Sample documents are fetched automatically from the stream. You do not need to fetch or pass documents.\n- The returned steps array is the COMPLETE proposed pipeline \u2014 pass it directly to the update stream tool to replace the stream's processing.\n- Simulation may be partial when existing steps are modified (documents already reflect prior processing).\n\n**Result:** Returns the complete proposed pipeline, a summary, field changes with sample values, simulation results (success rate, errors, simulation mode), samples info, and any warnings or hints.",
+  "tags": [
+    "streams"
+  ],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

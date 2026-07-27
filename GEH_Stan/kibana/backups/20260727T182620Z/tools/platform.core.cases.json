@@ -1,0 +1,11 @@
+{
+  "id": "platform.core.cases",
+  "type": "builtin",
+  "description": "Read-only retrieval of Elastic cases (Security / Observability / Stack Management). For writes use `platform.core.cases.manage` (CRUD), `platform.core.cases.attachments` (comments, alerts, events, get_all), or `platform.core.cases.observables` (IOCs).\n\nSTOP. Do NOT call this tool unless the user has named which Elastic app they are in \u2014 Security, Observability, or Stack Management \u2014 in their current or an earlier message. Otherwise ASK first: \"Which Elastic app is this in \u2014 Security, Observability, or Stack Management?\" Topic-keyword inference is NOT enough. Calling this tool with multiple solution values to \"cover all three\" is ALWAYS a bug. Applies to every mode, including operations on a `case_id`.\n\nModes: `get`, `bulk_get`, `similar`, `by_alert`, `search`. See `mode` field for required inputs.\n\n`owner` is required for `search` (other modes use specific identifiers instead). Never call this tool multiple times with different `owner` values \u2014 that's always a bug.\n\n`search` mode returns one page; default `perPage` **10**, max **50**, paginate with `page` (1-indexed).\n\nReturns metadata only; for comments/alert/event attachments call `platform.core.cases.attachments` mode `get_all`. Cases auto-render as structured attachments \u2014 emit `<render_attachment id=\"...\" />` for each ID in `attachment_ids` and don't format markdown links to the case in your text.",
+  "tags": [
+    "cases"
+  ],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

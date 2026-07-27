@@ -1,0 +1,68 @@
+version: "1"
+name: CT Hybrid Search API
+enabled: true
+description: >
+  REST/manual hybrid search over CT indicator events. Combines BM25 keyword
+  search with semantic search on indicator_message_semantic using RRF.
+  Prefer the Elasticsearch Search Application endpoint for sync results:
+  POST /_application/search_application/ct-hybrid-search-api/_search
+triggers:
+  - type: manual
+    with:
+      inputs:
+        - name: query
+          type: string
+          required: true
+          description: Natural language or keyword search
+        - name: size
+          type: number
+          required: false
+          default: 10
+          description: Results to return
+        - name: hospital
+          type: string
+          required: false
+          default: ""
+          description: Filter by hospital name
+        - name: sysid
+          type: string
+          required: false
+          default: ""
+          description: Filter by system ID
+        - name: severity
+          type: string
+          required: false
+          default: ""
+          description: Critical, Informational, Warning, etc.
+        - name: rank_window_size
+          type: number
+          required: false
+          default: 100
+          description: RRF candidate pool size
+        - name: rank_constant
+          type: number
+          required: false
+          default: 60
+          description: RRF ranking constant
+steps:
+  - name: hybrid_search
+    type: elasticsearch.request
+    with:
+      method: POST
+      path: /_application/search_application/ct-hybrid-search-api/_search
+      body:
+        params:
+          query: "{{ inputs.query }}"
+          size: "{{ inputs.size }}"
+          hospital: "{{ inputs.hospital }}"
+          sysid: "{{ inputs.sysid }}"
+          severity: "{{ inputs.severity }}"
+          rank_window_size: "{{ inputs.rank_window_size }}"
+          rank_constant: "{{ inputs.rank_constant }}"
+
+  - name: summarize_hits
+    type: data.set
+    with:
+      hit_count: "{{ steps.hybrid_search.output.hits.hits | size }}"
+      total: "{{ steps.hybrid_search.output.hits.total.value }}"
+      results: "${{ steps.hybrid_search.output.hits.hits | map: '_source' | json }}"

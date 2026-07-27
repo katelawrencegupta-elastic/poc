@@ -1,0 +1,9 @@
+{
+  "id": "platform.core.get_index_mapping",
+  "type": "builtin",
+  "description": "Retrieve mappings for indices, aliases or datastreams.",
+  "tags": [],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

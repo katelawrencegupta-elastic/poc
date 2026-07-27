@@ -1,0 +1,127 @@
+{
+  "id": "ct-scanner-critical-alert-repair-history-summary",
+  "name": "CT Scanner - Critical Alert Repair History Summary",
+  "description": null,
+  "enabled": false,
+  "managed": false,
+  "managedBy": null,
+  "valid": true,
+  "createdBy": "719348788",
+  "lastUpdatedBy": "719348788",
+  "createdAt": "2026-07-17T15:17:06.219Z",
+  "lastUpdatedAt": "2026-07-20T19:06:29.137Z",
+  "version": 11,
+  "definitionHash": null,
+  "lifecycle": null,
+  "definition": {
+    "version": "1",
+    "name": "CT Scanner - Critical Alert Repair History Summary",
+    "enabled": false,
+    "steps": [
+      {
+        "name": "extract_sysid",
+        "type": "data.set",
+        "with": {
+          "sysid": "{%- assign sysid_group = event.alerts[0].kibana.alert.grouping.sysid -%}\n{%- assign sysid_ctx = event.alerts[0].kibana.alert.context.sysid -%}\n{%- assign sysid_params = event.alerts[0].kibana.alert.rule.parameters.sysid -%}\n{%- if sysid_group and sysid_group != \"\" -%}\n  {{ sysid_group }}\n{%- elsif sysid_ctx and sysid_ctx != \"\" -%}\n  {{ sysid_ctx }}\n{%- elsif sysid_params and sysid_params != \"\" -%}\n  {{ sysid_params }}\n{%- endif -%}"
+        }
+      },
+      {
+        "name": "fetch_repair_history",
+        "type": "elasticsearch.search",
+        "with": {
+          "query": {
+            "term": {
+              "sysid": "{{ steps.extract_sysid.output.sysid }}"
+            }
+          },
+          "size": 100,
+          "sort": [
+            {
+              "opened_at": {
+                "order": "desc"
+              }
+            }
+          ],
+          "_source": [
+            "sysid",
+            "systype",
+            "productName",
+            "opened_at",
+            "closed_at",
+            "symptom",
+            "root_cause",
+            "resolution",
+            "failure_code",
+            "subsystem",
+            "parts_replaced",
+            "priority",
+            "status",
+            "duration_hours",
+            "labor_hours",
+            "field_engineer",
+            "visit_type",
+            "work_order_id",
+            "hospital",
+            "customer"
+          ],
+          "index": "ct_system_repair_history"
+        }
+      },
+      {
+        "name": "resolve_systype",
+        "type": "data.set",
+        "with": {
+          "systype": "{%- assign rh = steps.fetch_repair_history.output.hits.hits[0]._source.systype -%}\n{%- if rh and rh != \"\" -%}\n  {{ rh }}\n{%- endif -%}"
+        }
+      },
+      {
+        "name": "fetch_device_manual",
+        "type": "elasticsearch.search",
+        "with": {
+          "query": {
+            "term": {
+              "systype": "{{ steps.resolve_systype.output.systype }}"
+            }
+          },
+          "size": 1,
+          "_source": [
+            "manual_id",
+            "title",
+            "version",
+            "systype",
+            "productName",
+            "overview",
+            "safety",
+            "escalation"
+          ],
+          "index": "ct_device_manuals"
+        }
+      },
+      {
+        "name": "summarize_repair_history",
+        "type": "ai.summarize",
+        "with": {
+          "input": "${{ steps.fetch_repair_history.output.hits.hits | map: '_source' }}",
+          "instructions": "You are a medical equipment reliability analyst. A CT Scanner with system ID \"{{ steps.extract_sysid.output.sysid }}\" has just triggered a CRITICAL STATUS alert.\n\nSummarize the repair history for this system in the context of this critical alert. Your summary should include:\n- Total number of repair records found\n- Most recent repair: date, symptom, root cause, resolution, and engineer\n- Recurring failure patterns or subsystems with repeated issues\n- Any open or unresolved work orders\n- Parts most frequently replaced\n- Average repair duration and labor hours\n- Overall reliability assessment and whether the current critical alert may be related to prior issues\n- Any recommendations for preventive action\n\nFormat the summary clearly with sections and bullet points for easy reading by a field service manager.\n"
+        }
+      },
+      {
+        "name": "send_email_summary",
+        "type": "email",
+        "with": {
+          "to": [
+            "kate.lawrencegupta@elastic.co"
+          ],
+          "subject": "CT Scanner Critical Alert - Repair History Summary for {{ steps.extract_sysid.output.sysid }}",
+          "message": "CT Scanner Critical Status Alert \u2014 Repair History Summary\n==========================================================\nSystem ID : {{ steps.extract_sysid.output.sysid }}\nAlert Rule : {{ event.rule.name }}\nTriggered  : {{ event.alerts[0][\"@timestamp\"] }}\nTotal Repair Records Found: {{ steps.fetch_repair_history.output.hits.total.value }}\n\n\u2500\u2500 AI-Generated Repair History Summary \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n{{ steps.summarize_repair_history.output.content }}\n\n\u2500\u2500 Device Manual (ct_device_manuals) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n{%- assign manual = steps.fetch_device_manual.output.hits.hits[0]._source -%}\n{%- if manual and manual.manual_id -%}\nTitle    : {{ manual.title }}\nVersion  : {{ manual.version }}\nSystype  : {{ manual.systype }}\nManual ID: {{ manual.manual_id }}\n\nOverview:\n{{ manual.overview }}\n\nOpen full manual in Kibana:\nhttps://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/app/discover#/doc/default_all_data_id/ct_device_manuals?id={{ manual.manual_id }}\n{%- else -%}\nNo matching device manual found in ct_device_manuals for systype \"{{ steps.resolve_systype.output.systype }}\".\n{%- endif -%}\n\n\u2500\u2500 Alert Details \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAlert ID   : {{ event.alerts[0]._id }}\nIndex      : {{ event.alerts[0]._index }}\n\n--\nThis email was automatically generated by the CT Scanner Critical Alert workflow.\n"
+        },
+        "connector-id": "Elastic-Cloud-SMTP"
+      }
+    ],
+    "triggers": [
+      {
+        "type": "alert"
+      }
+    ]
+  }
+}

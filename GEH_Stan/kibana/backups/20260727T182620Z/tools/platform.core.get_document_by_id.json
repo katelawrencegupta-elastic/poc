@@ -1,0 +1,9 @@
+{
+  "id": "platform.core.get_document_by_id",
+  "type": "builtin",
+  "description": "Retrieve the full content (source) of an Elasticsearch document based on its ID and index name.",
+  "tags": [],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

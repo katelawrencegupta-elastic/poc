@@ -1,0 +1,11 @@
+{
+  "id": "platform.core.cases.attachments",
+  "type": "builtin",
+  "description": "Case attachments. Modes: `add_comment` (user comment), `add_alerts` (link SIEM/detection alerts), `add_events` (link log/event docs), `get_all` (fetch all comments, alerts, events). See `mode` field for required inputs.\n\nSTOP. Do NOT call this tool unless the user has named which Elastic app they are in \u2014 Security, Observability, or Stack Management \u2014 in their current or an earlier message. Otherwise ASK first: \"Which Elastic app is this in \u2014 Security, Observability, or Stack Management?\" Topic-keyword inference is NOT enough. Calling this tool with multiple solution values to \"cover all three\" is ALWAYS a bug. Applies to every mode, including operations on a `case_id`.\n\nText fields: use real newlines, not literal \\n sequences.",
+  "tags": [
+    "cases"
+  ],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

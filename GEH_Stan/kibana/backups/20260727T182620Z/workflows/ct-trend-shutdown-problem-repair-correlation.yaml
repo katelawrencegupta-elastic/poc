@@ -1,0 +1,211 @@
+version: "1"
+name: CT Trend Shutdown - Problem Reports & Repair Correlation
+enabled: false
+description: >
+  When the CT Trend Alert finds precursor events leading to Shutdown,
+  pull problem-report indicator history for the sysid, correlate with
+  repair records, and email a field-service summary.
+triggers:
+  - type: alert
+steps:
+  - name: extract_sysid
+    type: data.set
+    with:
+      sysid: |-
+        {%- assign g = event.alerts[0].kibana.alert.grouping -%}
+        {%- assign sysid_group = g.sysid -%}
+        {%- if sysid_group == nil or sysid_group == "" -%}
+          {%- assign sysid_group = g["sysid.keyword"] -%}
+        {%- endif -%}
+        {%- assign sysid_ctx = event.alerts[0].kibana.alert.context.sysid -%}
+        {%- assign sysid_params = event.alerts[0].kibana.alert.rule.parameters.sysid -%}
+        {%- if sysid_group and sysid_group != "" -%}
+          {{ sysid_group }}
+        {%- elsif sysid_ctx and sysid_ctx != "" -%}
+          {{ sysid_ctx }}
+        {%- elsif sysid_params and sysid_params != "" -%}
+          {{ sysid_params }}
+        {%- endif -%}
+
+  - name: fetch_problem_reports
+    type: elasticsearch.search
+    with:
+      index: ct_sitedata_ext2_indicator_events_m-2026.07.01
+      size: 50
+      sort:
+        - "@timestamp":
+            order: desc
+      query:
+        bool:
+          must:
+            - term:
+                sysid.keyword: "{{ steps.extract_sysid.output.sysid }}"
+            - terms:
+                event_type.keyword:
+                  - reli_error_code
+                  - ifr_error_code
+                  - detectorcontrol_ack_packet_receive
+                  - scan_failure
+                  - scanning_system_abort
+                  - gantry_subsystems_reseting
+                  - scansetup_failure
+                  - scanhardware_down
+      _source:
+        - "@timestamp"
+        - sysid
+        - event_type
+        - indicator_severity
+        - indicator_message
+        - indicator_id
+        - hospital
+        - customer
+        - productName
+        - systype
+        - machine_type
+        - sw_version
+        - exam_number
+        - ifr_event_name
+        - ifr_event_protocol_name
+        - ifr_event_category
+
+  - name: fetch_repair_history
+    type: elasticsearch.search
+    with:
+      index: ct_system_repair_history
+      size: 100
+      sort:
+        - opened_at:
+            order: desc
+      query:
+        term:
+          sysid: "{{ steps.extract_sysid.output.sysid }}"
+      _source:
+        - sysid
+        - systype
+        - productName
+        - opened_at
+        - closed_at
+        - symptom
+        - root_cause
+        - resolution
+        - failure_code
+        - subsystem
+        - parts_replaced
+        - priority
+        - status
+        - duration_hours
+        - labor_hours
+        - field_engineer
+        - visit_type
+        - work_order_id
+        - hospital
+        - customer
+
+  - name: resolve_systype
+    type: data.set
+    with:
+      systype: |-
+        {%- assign pr = steps.fetch_problem_reports.output.hits.hits[0]._source.systype -%}
+        {%- assign rh = steps.fetch_repair_history.output.hits.hits[0]._source.systype -%}
+        {%- if pr and pr != "" -%}
+          {{ pr }}
+        {%- elsif rh and rh != "" -%}
+          {{ rh }}
+        {%- endif -%}
+
+  - name: fetch_device_manual
+    type: elasticsearch.search
+    with:
+      index: ct_device_manuals
+      size: 1
+      query:
+        term:
+          systype: "{{ steps.resolve_systype.output.systype }}"
+      _source:
+        - manual_id
+        - title
+        - version
+        - systype
+        - productName
+        - overview
+        - safety
+        - escalation
+
+  - name: correlate_problems_and_repairs
+    type: ai.summarize
+    with:
+      input: |
+        SYSTEM_ID: {{ steps.extract_sysid.output.sysid }}
+        ALERT_RULE: {{ event.rule.name }}
+        ALERT_REASON: {{ event.alerts[0].kibana.alert.reason }}
+
+        PROBLEM_REPORTS_JSON:
+        ${{ steps.fetch_problem_reports.output.hits.hits | map: '_source' | json }}
+
+        REPAIR_RECORDS_JSON:
+        ${{ steps.fetch_repair_history.output.hits.hits | map: '_source' | json }}
+      instructions: |
+        You are a CT field-service reliability analyst. A trend alert detected
+        pre-cursor problem events leading to a scanhardware_down (Shutdown) for
+        system "{{ steps.extract_sysid.output.sysid }}".
+
+        Using BOTH the problem-report indicator history and the repair records:
+        1. Summarize the problem-report timeline (event types, severities, key messages),
+           highlighting the path toward Shutdown (scanhardware_down).
+        2. Summarize the repair history for this sysid (symptoms, subsystems,
+           failure codes, resolutions, open vs closed work orders).
+        3. CORRELATE problem reports with repairs: match recurring indicator themes
+           (gantry, detector, scan abort/failure, hardware down, etc.) to repair
+           subsystems/failure codes/symptoms. Call out likely related past repairs
+           and gaps where problems recurred without a matching repair.
+        4. Give a concise risk assessment and recommended next field actions.
+
+        Format with clear sections and bullet points for a field service manager.
+        If either dataset is empty, say so explicitly and proceed with what remains.
+
+  - name: send_email_summary
+    type: email
+    connector-id: Elastic-Cloud-SMTP
+    with:
+      to:
+        - kate.lawrencegupta@elastic.co
+      subject: "CT Trend Shutdown Alert — Problems & Repairs for {{ steps.extract_sysid.output.sysid }}"
+      message: |
+        CT Trend Alert: Pre-cursor Events Leading to Shutdown
+        =====================================================
+        System ID : {{ steps.extract_sysid.output.sysid }}
+        Alert Rule : {{ event.rule.name }}
+        Triggered  : {{ event.alerts[0]["@timestamp"] }}
+
+        Problem reports found : {{ steps.fetch_problem_reports.output.hits.total.value }}
+        Repair records found  : {{ steps.fetch_repair_history.output.hits.total.value }}
+
+        ── Correlated Problem / Repair Summary ──────────────────────────────
+
+        {{ steps.correlate_problems_and_repairs.output.content }}
+
+        ── Device Manual (ct_device_manuals) ─────────────────────────────────
+        {%- assign manual = steps.fetch_device_manual.output.hits.hits[0]._source -%}
+        {%- if manual and manual.manual_id -%}
+        Title    : {{ manual.title }}
+        Version  : {{ manual.version }}
+        Systype  : {{ manual.systype }}
+        Manual ID: {{ manual.manual_id }}
+
+        Overview:
+        {{ manual.overview }}
+
+        Open full manual in Kibana:
+        https://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/app/discover#/doc/default_all_data_id/ct_device_manuals?id={{ manual.manual_id }}
+        {%- else -%}
+        No matching device manual found in ct_device_manuals for systype "{{ steps.resolve_systype.output.systype }}".
+        {%- endif -%}
+
+        ── Alert Details ────────────────────────────────────────────────────
+        Alert ID   : {{ event.alerts[0]._id }}
+        Index      : {{ event.alerts[0]._index }}
+        Reason     : {{ event.alerts[0].kibana.alert.reason }}
+
+        --
+        This email was automatically generated by the CT Trend Shutdown
+        problem-report and repair correlation workflow.

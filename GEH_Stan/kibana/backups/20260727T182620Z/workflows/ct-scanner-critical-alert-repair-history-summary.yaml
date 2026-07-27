@@ -1,0 +1,142 @@
+version: "1"
+name: CT Scanner - Critical Alert Repair History Summary
+enabled: false
+triggers:
+  - type: alert
+steps:
+  - name: extract_sysid
+    type: data.set
+    with:
+      sysid: |-
+        {%- assign sysid_group = event.alerts[0].kibana.alert.grouping.sysid -%}
+        {%- assign sysid_ctx = event.alerts[0].kibana.alert.context.sysid -%}
+        {%- assign sysid_params = event.alerts[0].kibana.alert.rule.parameters.sysid -%}
+        {%- if sysid_group and sysid_group != "" -%}
+          {{ sysid_group }}
+        {%- elsif sysid_ctx and sysid_ctx != "" -%}
+          {{ sysid_ctx }}
+        {%- elsif sysid_params and sysid_params != "" -%}
+          {{ sysid_params }}
+        {%- endif -%}
+
+  - name: fetch_repair_history
+    type: elasticsearch.search
+    with:
+      query:
+        term:
+          sysid: "{{ steps.extract_sysid.output.sysid }}"
+      size: 100
+      sort:
+        - opened_at:
+            order: desc
+      _source:
+        - sysid
+        - systype
+        - productName
+        - opened_at
+        - closed_at
+        - symptom
+        - root_cause
+        - resolution
+        - failure_code
+        - subsystem
+        - parts_replaced
+        - priority
+        - status
+        - duration_hours
+        - labor_hours
+        - field_engineer
+        - visit_type
+        - work_order_id
+        - hospital
+        - customer
+      index: ct_system_repair_history
+
+  - name: resolve_systype
+    type: data.set
+    with:
+      systype: |-
+        {%- assign rh = steps.fetch_repair_history.output.hits.hits[0]._source.systype -%}
+        {%- if rh and rh != "" -%}
+          {{ rh }}
+        {%- endif -%}
+
+  - name: fetch_device_manual
+    type: elasticsearch.search
+    with:
+      index: ct_device_manuals
+      size: 1
+      query:
+        term:
+          systype: "{{ steps.resolve_systype.output.systype }}"
+      _source:
+        - manual_id
+        - title
+        - version
+        - systype
+        - productName
+        - overview
+        - safety
+        - escalation
+
+  - name: summarize_repair_history
+    type: ai.summarize
+    with:
+      input: "${{ steps.fetch_repair_history.output.hits.hits | map: '_source' }}"
+      instructions: |
+        You are a medical equipment reliability analyst. A CT Scanner with system ID "{{ steps.extract_sysid.output.sysid }}" has just triggered a CRITICAL STATUS alert.
+
+        Summarize the repair history for this system in the context of this critical alert. Your summary should include:
+        - Total number of repair records found
+        - Most recent repair: date, symptom, root cause, resolution, and engineer
+        - Recurring failure patterns or subsystems with repeated issues
+        - Any open or unresolved work orders
+        - Parts most frequently replaced
+        - Average repair duration and labor hours
+        - Overall reliability assessment and whether the current critical alert may be related to prior issues
+        - Any recommendations for preventive action
+
+        Format the summary clearly with sections and bullet points for easy reading by a field service manager.
+
+  - name: send_email_summary
+    type: email
+    connector-id: Elastic-Cloud-SMTP
+    with:
+      to:
+        - kate.lawrencegupta@elastic.co
+      subject: "CT Scanner Critical Alert - Repair History Summary for {{ steps.extract_sysid.output.sysid }}"
+      message: |
+        CT Scanner Critical Status Alert — Repair History Summary
+        ==========================================================
+        System ID : {{ steps.extract_sysid.output.sysid }}
+        Alert Rule : {{ event.rule.name }}
+        Triggered  : {{ event.alerts[0]["@timestamp"] }}
+        Total Repair Records Found: {{ steps.fetch_repair_history.output.hits.total.value }}
+
+        ── AI-Generated Repair History Summary ──────────────────────────────
+
+        {{ steps.summarize_repair_history.output.content }}
+
+        ── Device Manual (ct_device_manuals) ─────────────────────────────────
+        {%- assign manual = steps.fetch_device_manual.output.hits.hits[0]._source -%}
+        {%- if manual and manual.manual_id -%}
+        Title    : {{ manual.title }}
+        Version  : {{ manual.version }}
+        Systype  : {{ manual.systype }}
+        Manual ID: {{ manual.manual_id }}
+
+        Overview:
+        {{ manual.overview }}
+
+        Open full manual in Kibana:
+        https://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/app/discover#/doc/default_all_data_id/ct_device_manuals?id={{ manual.manual_id }}
+        {%- else -%}
+        No matching device manual found in ct_device_manuals for systype "{{ steps.resolve_systype.output.systype }}".
+        {%- endif -%}
+
+        ── Alert Details ────────────────────────────────────────────────────
+        Alert ID   : {{ event.alerts[0]._id }}
+        Index      : {{ event.alerts[0]._index }}
+
+        --
+        This email was automatically generated by the CT Scanner Critical Alert workflow.

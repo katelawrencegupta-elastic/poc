@@ -1,0 +1,102 @@
+{
+  "id": "pcd-collimation-fail-critical-summary",
+  "name": "PCD Collimation FAIL + Critical \u2014 AI Summary Email",
+  "description": "When a system has PCD collimation_status FAIL and CT Critical indicators for the same sysid, summarize the PCD failure context with AI and email kate.lawrencegupta@elastic.co.\n",
+  "enabled": true,
+  "managed": false,
+  "managedBy": null,
+  "valid": true,
+  "createdBy": "719348788",
+  "lastUpdatedBy": "719348788",
+  "createdAt": "2026-07-22T19:43:34.320Z",
+  "lastUpdatedAt": "2026-07-27T17:06:15.384Z",
+  "version": 5,
+  "definitionHash": null,
+  "lifecycle": null,
+  "definition": {
+    "version": "1",
+    "name": "PCD Collimation FAIL + Critical \u2014 AI Summary Email",
+    "description": "When a system has PCD collimation_status FAIL and CT Critical indicators for the same sysid, summarize the PCD failure context with AI and email kate.lawrencegupta@elastic.co.\n",
+    "enabled": true,
+    "steps": [
+      {
+        "name": "extract_sysid",
+        "type": "data.set",
+        "with": {
+          "sysid": "{%- assign g = event.alerts[0].kibana.alert.grouping -%}{%- assign s = g.sysid -%}{%- if s == nil or s == '' -%}{%- assign s = g['sysid.keyword'] -%}{%- endif -%}{%- if s == nil or s == '' -%}{%- assign s = event.alerts[0].kibana.alert.context.sysid -%}{%- endif -%}{%- if s == nil or s == '' -%}{%- assign s = event.alerts[0].kibana.alert.rule.parameters.sysid -%}{%- endif -%}{{ s | strip }}"
+        }
+      },
+      {
+        "name": "fetch_pcd_failures",
+        "type": "elasticsearch.esql.query",
+        "with": {
+          "query": "FROM pcd_detector_lpp_honeycomb\n| WHERE sysid.keyword == \"{{ variables.sysid }}\"\n    AND collimation_status.keyword == \"FAIL\"\n| EVAL failed_module_flag = CASE(is_failed_module == true, 1, 0)\n| STATS\n    module_docs = COUNT(*),\n    failed_module_docs = SUM(failed_module_flag),\n    max_bad_pixels = MAX(is_bad_count),\n    latest_pcd = MAX(@timestamp)\n  BY sysid.keyword, session_id.keyword, collimation.keyword, collimation_status.keyword\n| SORT latest_pcd DESC\n| LIMIT 50\n",
+          "format": "json"
+        }
+      },
+      {
+        "name": "fetch_critical_indicators",
+        "type": "elasticsearch.esql.query",
+        "with": {
+          "query": "FROM ct_sitedata_ext2_indicator_events_m*\n| WHERE sysid.keyword == \"{{ variables.sysid }}\"\n    AND TO_UPPER(indicator_severity.keyword) == \"CRITICAL\"\n| KEEP @timestamp, sysid, event_type, indicator_severity, indicator_message,\n       indicator_id, hospital, customer, productName, systype, machine_type,\n       sw_version, exam_number, ifr_event_name, ifr_event_protocol_name,\n       ifr_event_category\n| SORT @timestamp DESC\n| LIMIT 50\n",
+          "format": "json"
+        }
+      },
+      {
+        "name": "resolve_systype",
+        "type": "data.set",
+        "with": {
+          "systype": "{%- assign alert_sys = event.alerts[0].kibana.alert.grouping.systype -%}{%- if alert_sys and alert_sys != '' -%}{{ alert_sys | strip }}{%- endif -%}"
+        }
+      },
+      {
+        "name": "fetch_device_manual",
+        "type": "elasticsearch.search",
+        "with": {
+          "query": {
+            "term": {
+              "systype.keyword": "{{ variables.systype }}"
+            }
+          },
+          "size": 1,
+          "_source": [
+            "manual_id",
+            "title",
+            "version",
+            "systype",
+            "productName",
+            "overview",
+            "safety",
+            "escalation"
+          ],
+          "index": "ct_device_manuals"
+        }
+      },
+      {
+        "name": "summarize_pcd_failure",
+        "type": "ai.summarize",
+        "with": {
+          "input": "SYSTEM_ID: {{ variables.sysid }}\nALERT_RULE: {{ event.rule.name }}\nALERT_REASON: {{ event.alerts[0].kibana.alert.reason }}\nALERT_GROUPING_JSON: ${{ event.alerts[0].kibana.alert.grouping | json }}\n\nPCD_COLLIMATION_FAIL_SUMMARY_ROWS_JSON:\n${{ steps.fetch_pcd_failures.output.values | json }}\n\nPCD_COLLIMATION_FAIL_COLUMNS_JSON:\n${{ steps.fetch_pcd_failures.output.columns | json }}\n\nCT_CRITICAL_INDICATORS_ROWS_JSON:\n${{ steps.fetch_critical_indicators.output.values | json }}\n",
+          "instructions": "You are a CT detector / PCD field-service reliability analyst. An alert\nfired for system \"{{ variables.sysid }}\".\n\nUsing the PCD failure summary rows and Critical indicator history:\n1. Summarize the PCD / collimation failure: sessions, collimation values,\n   failed modules, bad-pixel counts, and timing.\n2. Summarize the Critical indicator pattern for this sysid (event types,\n   key messages, protocols/categories if present).\n3. Correlate PCD FAIL with Critical indicators on the same sysid: what\n   clinical / subsystem risk does the combination imply?\n4. Recommend concise next field actions (module swap, recalibration,\n   LPP re-run, parts to stage, escalation).\n\nFormat with clear sections and bullet points for a field service manager.\nIf the PCD rows array is empty, say explicitly that no PCD FAIL documents\nwere found for this exact sysid in pcd_detector_lpp_honeycomb, and still\nsummarize Critical indicators. Do not invent PCD failure details.\nFocus the email narrative on PCD failures when rows exist.\n"
+        }
+      },
+      {
+        "name": "send_email_summary",
+        "type": "email",
+        "with": {
+          "to": [
+            "kate.lawrencegupta@elastic.co"
+          ],
+          "subject": "PCD Collimation FAIL + Critical \u2014 AI Summary for {{ variables.sysid }}",
+          "message": "PCD Collimation FAIL with CT Critical Indicators\n================================================\nSystem ID : {{ variables.sysid }}\nAlert Rule : {{ event.rule.name }}\nTriggered  : {{ event.alerts[0][\"@timestamp\"] }}\n\nPCD FAIL summary rows   : {{ steps.fetch_pcd_failures.output.values | size }}\nCritical indicator rows : {{ steps.fetch_critical_indicators.output.values | size }}\n\n\u2500\u2500 AI Summary (PCD failures) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n{{ steps.summarize_pcd_failure.output.content }}\n\n\u2500\u2500 Device Manual (ct_device_manuals) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n{%- assign manual = steps.fetch_device_manual.output.hits.hits[0]._source -%}\n{%- if manual and manual.manual_id -%}\nTitle    : {{ manual.title }}\nVersion  : {{ manual.version }}\nSystype  : {{ manual.systype }}\nManual ID: {{ manual.manual_id }}\n\nOverview:\n{{ manual.overview }}\n\nOpen full manual in Kibana:\nhttps://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/app/discover#/doc/default_all_data_id/ct_device_manuals?id={{ manual.manual_id }}\n{%- else -%}\nNo matching device manual found in ct_device_manuals for systype \"{{ variables.systype }}\".\n{%- endif -%}\n\n\u2500\u2500 Alert Details \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nAlert ID   : {{ event.alerts[0]._id }}\nIndex      : {{ event.alerts[0]._index }}\nReason     : {{ event.alerts[0].kibana.alert.reason }}\n\n--\nThis email was automatically generated by the PCD collimation FAIL +\nCritical AI summary workflow.\n"
+        },
+        "connector-id": "Elastic-Cloud-SMTP"
+      }
+    ],
+    "triggers": [
+      {
+        "type": "alert"
+      }
+    ]
+  }
+}

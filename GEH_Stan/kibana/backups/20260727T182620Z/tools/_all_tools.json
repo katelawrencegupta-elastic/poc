@@ -1,0 +1,340 @@
+{
+  "results": [
+    {
+      "id": "platform.workflows.validate_workflow",
+      "type": "builtin",
+      "description": "Validate a workflow YAML string against all validation rules.\nUse this tool AFTER generating or modifying workflow YAML and BEFORE proposing changes to the user.\nIt checks YAML syntax, schema conformance, step name uniqueness, and Liquid template syntax.\nWhen validation fails, step type definitions used in the workflow are automatically included to help fix issues.\nIf validation fails, fix the issues and re-validate until the YAML is valid.",
+      "tags": [
+        "workflows",
+        "yaml",
+        "validation"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.workflows.get_step_definitions",
+      "type": "builtin",
+      "description": "Get available workflow step types, their parameters, and usage examples.\n\n**When to use:** Before generating step YAML, to discover available step types, their input params (`with` block), config params (step-level fields like `connector-id`), and usage examples.\n**When NOT to use:** To find connector instances configured in the environment (use get_connectors instead).\n\nSupports filtering by exact step type, keyword search, or category.\nDeprecated steps are excluded from broad discovery by default, but exact step type lookups still return them.\nWhen a small number of results is returned, input/config parameter summaries and usage examples are included.\nCommon step properties (name, type, if, timeout, on-failure) are NOT listed per step -- they apply to all steps (see skill prompt).\nSet includeOutputSummary=true to get a compact one-line summary of each step's output fields (useful for knowing what data is available via `{{ steps.name.field }}`).\nSet includeFullSchema=true to get the full JSON Schema for step input params (use sparingly -- only when examples are insufficient).",
+      "tags": [
+        "workflows",
+        "yaml",
+        "steps"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.workflows.get_trigger_definitions",
+      "type": "builtin",
+      "description": "Get available workflow trigger types with schemas and YAML examples.\n\n**When to use:** To learn how to configure the `triggers` section of a workflow, or to understand what `{{ event.* }}` variables are available at runtime for a given trigger type.\n**When NOT to use:** For step definitions (use get_step_definitions) or connector instances (use get_connectors).\n\nReturns built-in trigger types (manual, scheduled, alert) plus event-driven triggers (e.g. cases.caseUpdated) including the event context schema that describes what `{{ event.* }}` contains at runtime.",
+      "tags": [
+        "workflows",
+        "yaml",
+        "triggers"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.workflows.get_connectors",
+      "type": "builtin",
+      "description": "Get connector instances configured in the user's environment.\n\n**When to use:** To find connector IDs needed for the `connector-id` field in workflow steps (e.g., which Slack or Jira connectors are available).\n**When NOT to use:** To discover step types and their schemas (use get_step_definitions instead).\n\nReturns connector instances with their ID and name, plus:\n- `actionTypeId`: the Kibana action type ID (e.g. \".slack\")\n- `stepTypes`: workflow step types this connector supports (e.g. [\"inference.completion\", \"inference.rerank\"] for sub-action connectors, or [\"slack\"] for simple connectors)\n\nThe connector `id` is what you put in the `connector-id` field of a workflow step.",
+      "tags": [
+        "workflows",
+        "connectors"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.workflows.get_examples",
+      "type": "builtin",
+      "description": "Search and retrieve example workflow YAML files from the bundled library.\n\n**When to use:** Before generating workflow YAML, to learn correct syntax patterns for triggers, steps, inputs, on-failure handling, etc.\n**When NOT to use:** To find workflows in the user's environment (use sml_search instead).\n\nAvailable categories: security, integrations, examples, utilities, search.\nSupports keyword search across names, descriptions, and tags.",
+      "tags": [
+        "workflows",
+        "yaml",
+        "examples"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.workflows.workflow_execute_step",
+      "type": "builtin",
+      "description": "Execute a single workflow step against the real environment.\n- Safe steps (data, ES reads, cases reads): executed and output returned with no prompt.\n- Unsafe steps (slack.sendMessage, elasticsearch.indices.delete, ES writes, kibana.request, http, \u2026): execution is gated by a user confirmation dialog. ALWAYS populate `confirmation_body` with a Markdown preview describing: (1) resolved inputs (e.g. Slack channel + message text, ES index + operation + approximate doc count), (2) the side effect this step will produce, (3) whether the action is reversible. Without `confirmation_body` the dialog falls back to a flat key/value dump, which is a degraded UX.\n- if/while steps containing unsafe children: children are auto-replaced with safe stubs so the condition can be tested \u2014 returns which branch was taken (no prompt).\n- Other safe-container steps with unsafe descendants (e.g. foreach with an unsafe child): conversation mode prompts once and authorizes the whole container; standalone mode returns a preview with validation (no prompt).\n\nProvide `contextOverride` with mock data when the step references outputs from previous steps.\nProvide `yaml` to execute a step without needing a workflow.yaml attachment (useful for field discovery before creating the full workflow).\n\nIf the user declines a confirmation, do NOT retry the same step. Acknowledge the cancellation and continue with other unrelated work.",
+      "tags": [
+        "workflows",
+        "yaml",
+        "execution",
+        "testing"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.get_workflow_execution_status",
+      "type": "builtin",
+      "description": "Retrieve the status of a workflow execution.\n\nIf the workflow execution has completed, the final output will be returned. Otherwise, the execution status will be returned.\n\n**important**: do **NOT** call this tool directly after calling a workflow tool.\nInstead, if the workflow didn't complete, tell the user they can ask you to check the execution.",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.resume_workflow_execution",
+      "type": "builtin",
+      "description": "Resume a workflow execution that is paused and waiting for human input.\n\nUse this tool when a workflow execution returned with status \"waiting_for_input\".\nThe execution's \"waiting_input\" field describes what input is expected (message and optional schema).\nProvide the executionId and the required input object to resume the workflow.\n\n**Important - read after resume:** a successful call means resume was **accepted and scheduled** in the engine.\nThe execution record can **lag**: you may still briefly see the same \"waiting_for_input\" and the same form right after this tool returns. **Do not** tell the user there is another HITL step, a loop or a second approval round unless you have **confirmed** a genuinely new pause (clear evidence such as a new step, changed context, or repeated status checks that rule out a stale snapshot).\n\n**What you should do:** call platform.core.get_workflow_execution_status on the same executionId. Compare **waiting_input.step_execution_id** between polls: if it **changes** while still waiting_for_input, that is evidence of a **new** HITL step; if it is the **same** id immediately after resume, treat it as likely stale until status moves on. Stop once the status clearly updates (e.g. completed, failed, running) or after **up to ~5 status polls** without any change.\n\n**If status has not changed after those polls:** tell the user their resume was **submitted**, but you **could not confirm** the new execution state from Kibana yet - do **not** invent a second approval workflow.",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.list_workflow_executions",
+      "type": "builtin",
+      "description": "List recent workflow executions in the current space.\n\nUse this tool when you need to find an execution but do not have an execution ID.\nResults are sorted most-recent first.\nOnce you have an executionId from the results, call platform.core.get_workflow_execution_status\nto retrieve the full execution details and output.\nNote: date range, trigger type filtering, and cursor-based pagination are not yet supported.",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.generate_workflow",
+      "type": "builtin",
+      "description": "Generate or update an Elastic workflow definition based on a natural-language description.\n\nUse this tool when:\n\u2014 The user asks to create, draft or scaffold a new workflow.\n\u2013 The user asks to edit an existing workflow.\n\u2014 You want to generate a workflow to fulfill a specific multi-step task.\n\n## Which context to provide\n\nUnder the hood, the tool delegates to a workflow-generation specialized agent.\n\nThe workflow agent has innate knowledge of (meaning you don't need to gather information / provide those in the prompt):\n\u2014 The workflow syntax and official documentation\n\u2014 The available step types, their configuration and how to use them\n\u2014 The list of available connector types\n\u2014 The list of connectors available on the current Kibana instance\n\u2014 When the 'attachmentId' parameter is specified, the corresponding workflow definition\n\nThe workflow agent has **no** knowledge of (meaning you need to provide or eventually gather info about):\n\u2014 The current conversation (meaning that if information useful for the workflow generation is present in the conversation, you should explicitly summarize those and mention then as context when calling the tool)\n\u2014 Any info related to the state of the Elasticsearch cluster (available indices, their mappings...)\n\nE.g., if the user message is \"Ok now that we've identified that log index, now generate a workflow checking every 30mins for error in it and post a summary to slack in the foo channel\", you should\n1. Specify which index the workflow should be targeted (inferred from the conversation / previous messages)\n2. Check the mappings of that index to provide guidance on how to identify errors\nAnd you should **not**:\n1. Try to list connectors, connector types,\n2. Load the workflow-authoring skill to get more knowledge about the workflow syntax\n\n## Usage notes\n\n\u2014 If all you need is to generate a workflow, you do *NOT* need to read the \"workflow-authoring\" skill first, you can call this tool directly.\n\u2014 The tool creates (or updates) a workflow attachment and emits a diff card in chat.\n\u2014 Render the diff with \"<render_attachment id=\"{diffAttachmentId}\"/>\" and the workflow with \"<render_attachment id=\"{attachmentId}\" version=\"{attachmentVersion}\"/>\".\n\n## Alert-triggered workflows\n\nWhen the workflow is alert-triggered (`type: alert`), runtime alert data is exposed to Liquid expressions as `event.*` \u2014 NEVER `triggers.event` or `trigger.event` (the `triggers` block only configures which triggers fire the workflow; it does not carry runtime data). If the user's request names specific alert fields (rule name, severity, alert ID, tags, space), pass them in `context` using this schema so the generated Liquid resolves correctly:\n\u2014 `event.alerts` \u2014 array of alert objects that fired\n\u2014 `event.alerts[0]._id` / `._index` / `.kibana.alert.*` / `[\"@timestamp\"]`\n\u2014 `event.rule.id` / `event.rule.name` / `event.rule.tags`\n\u2014 `event.spaceId` \u2014 the space where the event was emitted",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.execute_workflow",
+      "type": "builtin",
+      "description": "Execute an Elastic workflow.\n\nUse this tool when:\n\u2014 The user asks to run, trigger or execute a workflow.\n\u2014 You need to run a workflow you just generated (e.g. via `generate_workflow`).\n\n## Source \u2014 exactly one must be provided\n\n- `workflowId`: a persisted workflow id (the workflow must be saved and enabled).\n- `yaml`: an inline YAML workflow definition; runs ephemerally (no persistence).\n- `attachmentId`: the id of a workflow YAML attachment already in this conversation (as returned by `generate_workflow`).\n\nProviding zero or more than one will return an error.\n\n## Inputs\n\nPass workflow inputs in `inputs`. Make sure the keys/types match the workflow's declared inputs schema.\nIf the workflow has no inputs, omit `inputs` or pass `{}`.\n\n## Wait behaviour\n\n`waitForCompletion` defaults to `true` (up to 120s).\nIf set to false, or if the workflow does not complete within the timeout, the tool returns the in-flight execution and you can poll via `platform.core.get_workflow_execution_status`.\n\n## Follow-ups\n\n- If the returned execution status is `waiting_for_input`, the workflow is paused; resume it with `platform.core.resume_workflow_execution`.\n- If the status is not terminal (still running), call `platform.core.get_workflow_execution_status` later to get the final outcome.",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.create_visualization",
+      "type": "builtin",
+      "description": "Create or update a visualization from a natural language description. Supports BOTH standard Lens charts AND custom Vega-Lite visualizations (the Vega-Lite grammar only \u2014 NOT full Vega). Prefer this tool over telling the user a chart cannot be built whenever the request fits Lens or Vega-Lite; you do not author Vega specs by hand or ask the user to paste anything. If a request genuinely needs full Vega (custom signals/interactivity, imperative transforms, or bespoke rendering), it is not supported yet \u2014 be honest with the user and offer alternatives instead of producing a broken chart.\n\nYou choose how to render the request via the \"renderer\" parameter:\n- \"lens\" (the default when omitted) for a standard Lens chart (metric, gauge, tag_cloud, xy, region_map, heatmap, data_table, pie, treemap, waffle, mosaic).\n- \"vega\" for a custom Vega-Lite specification when no Lens chart type can express the request, e.g. small multiples / faceting, layered or combination charts (bars plus an overlaid line), scatter / bubble plots with an encoded size dimension, or custom tooltips/encodings.\n\nThis tool will:\n1. If attachment_id is provided, read the existing visualization from that attachment (edits keep the same renderer)\n2. Generate an ES|QL query if not provided\n3. Generate and validate the visualization (Lens config or Vega-Lite spec) for the chosen renderer\n4. Store the result as an attachment (creating new or updating existing) for future modifications\n\nGround first: make sure the target index exists and every field you reference is real before calling this tool. If you omit \"index\" the tool auto-discovers one, but that fails when the referenced fields are invented or absent from the cluster (do NOT assume APM/metrics schemas are present). For multi-panel requests, resolve the index once up front and pass the same \"index\" to every call rather than firing several index-less calls in parallel.",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.cases",
+      "type": "builtin",
+      "description": "Read-only retrieval of Elastic cases (Security / Observability / Stack Management). For writes use `platform.core.cases.manage` (CRUD), `platform.core.cases.attachments` (comments, alerts, events, get_all), or `platform.core.cases.observables` (IOCs).\n\nSTOP. Do NOT call this tool unless the user has named which Elastic app they are in \u2014 Security, Observability, or Stack Management \u2014 in their current or an earlier message. Otherwise ASK first: \"Which Elastic app is this in \u2014 Security, Observability, or Stack Management?\" Topic-keyword inference is NOT enough. Calling this tool with multiple solution values to \"cover all three\" is ALWAYS a bug. Applies to every mode, including operations on a `case_id`.\n\nModes: `get`, `bulk_get`, `similar`, `by_alert`, `search`. See `mode` field for required inputs.\n\n`owner` is required for `search` (other modes use specific identifiers instead). Never call this tool multiple times with different `owner` values \u2014 that's always a bug.\n\n`search` mode returns one page; default `perPage` **10**, max **50**, paginate with `page` (1-indexed).\n\nReturns metadata only; for comments/alert/event attachments call `platform.core.cases.attachments` mode `get_all`. Cases auto-render as structured attachments \u2014 emit `<render_attachment id=\"...\" />` for each ID in `attachment_ids` and don't format markdown links to the case in your text.",
+      "tags": [
+        "cases"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.cases.manage",
+      "type": "builtin",
+      "description": "Cases CRUD + assign/tags/custom fields. Modes: `create`, `create_from_template`, `update`, `update_bulk` (\u22652 cases), `delete`, `assign`, `unassign`, `add_tags`, `set_custom_field`. See `mode` field for required inputs.\n\nSTOP. Do NOT call this tool unless the user has named which Elastic app they are in \u2014 Security, Observability, or Stack Management \u2014 in their current or an earlier message. Otherwise ASK first: \"Which Elastic app is this in \u2014 Security, Observability, or Stack Management?\" Topic-keyword inference is NOT enough. Calling this tool with multiple solution values to \"cover all three\" is ALWAYS a bug. Applies to every mode, including operations on a `case_id`.\n\nText fields: use real newlines, not literal \\n sequences.",
+      "tags": [
+        "cases"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.cases.attachments",
+      "type": "builtin",
+      "description": "Case attachments. Modes: `add_comment` (user comment), `add_alerts` (link SIEM/detection alerts), `add_events` (link log/event docs), `get_all` (fetch all comments, alerts, events). See `mode` field for required inputs.\n\nSTOP. Do NOT call this tool unless the user has named which Elastic app they are in \u2014 Security, Observability, or Stack Management \u2014 in their current or an earlier message. Otherwise ASK first: \"Which Elastic app is this in \u2014 Security, Observability, or Stack Management?\" Topic-keyword inference is NOT enough. Calling this tool with multiple solution values to \"cover all three\" is ALWAYS a bug. Applies to every mode, including operations on a `case_id`.\n\nText fields: use real newlines, not literal \\n sequences.",
+      "tags": [
+        "cases"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.cases.observables",
+      "type": "builtin",
+      "description": "Case observables \u2014 IOCs/indicators (IPs, domains, file hashes, URLs, emails, registry keys). Modes: `add`, `update`, `delete`. See `mode` field for required inputs.\n\nSTOP. Do NOT call this tool unless the user has named which Elastic app they are in \u2014 Security, Observability, or Stack Management \u2014 in their current or an earlier message. Otherwise ASK first: \"Which Elastic app is this in \u2014 Security, Observability, or Stack Management?\" Topic-keyword inference is NOT enough. Calling this tool with multiple solution values to \"cover all three\" is ALWAYS a bug. Applies to every mode, including operations on a `case_id`.\n\nText fields: use real newlines, not literal \\n sequences.",
+      "tags": [
+        "cases"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.search",
+      "type": "builtin",
+      "description": "A powerful tool for searching and analyzing data within your Elasticsearch cluster.\nIt supports both full-text relevance searches and structured analytical queries.\n\nUse this tool for any query that involves finding documents, counting, aggregating, or summarizing data from a known index.\n\nExamples of queries:\n- \"find articles about serverless architecture\"\n- \"search for support tickets mentioning 'billing issue' or 'refund request'\"\n- \"what is our policy on parental leave?\"\n- \"list all products where the category is 'electronics'\"\n- \"show me the last 5 documents from that index\"\n- \"show me the sales over the last year break down by month\"\n\nNote:\n- The 'index' parameter can be used to specify which index to search against.\n If not provided, the tool will decide itself which is the best index to use.\n- It is perfectly fine not to specify the 'index' parameter. It should only be specified when you already\n know about the index and fields you want to search on, e.g. if the user explicitly specified it.\n    ",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.get_document_by_id",
+      "type": "builtin",
+      "description": "Retrieve the full content (source) of an Elasticsearch document based on its ID and index name.",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.execute_esql",
+      "type": "builtin",
+      "description": "Execute an ES|QL query and return the results in a tabular format.\n\n## Usage\n\n**IMPORTANT**: This tool only **runs** queries; it does not write them.\nThink of this as the final step after a query has been prepared.\n\nYou **must** get the query from one of two sources before calling this tool:\n1.  The output of the `platform.core.generate_esql` tool (if the tool is available).\n2.  A verbatim query provided directly by the user.\n\nUnder no circumstances should you invent, guess, or modify a query yourself for this tool.\nIf you need a query, use the `platform.core.generate_esql` tool first.\n\n### Using a limit\n\nThe `limit` parameter can be used to limit the number of results to return. It defaults to 100.\nYou should avoid using a higher limit value unless explicitly asked by the user or if you know for sure the length of the data will not be a problem.\nNote that this option can't be used to increase the number of results if the query already defines a `LIMIT` clause - the lowest limit will always prevail.",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.generate_esql",
+      "type": "builtin",
+      "description": "Generate an ES|QL query from a natural language query.",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.get_index_mapping",
+      "type": "builtin",
+      "description": "Retrieve mappings for indices, aliases or datastreams.",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.list_indices",
+      "type": "builtin",
+      "description": "List the indices, aliases, datastreams and external ES|QL datasets from the Elasticsearch cluster.\n\nThe 'pattern' optional parameter is an index pattern which can be used to filter resources.\nThis parameter should only be used when you already know of a specific pattern to filter on,\ne.g. if the user provided one. Otherwise, do not try to invent or guess a pattern.\n\nDatasets are external sources (e.g. CSV files on object storage) that can only be queried with\nES|QL (\"FROM <dataset_name>\"); they do not support _search.",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.index_explorer",
+      "type": "builtin",
+      "description": "List relevant indices, aliases and datastreams based on a natural language query.\n\nThe 'indexPattern' parameter can be used to filter indices by a specific pattern, e.g. 'foo*'.\nThis should *only* be used if you know what you're doing (e.g. if the user explicitly specified a pattern).\nOtherwise, leave it empty to search against all indices.\n\n*Example:*\nUser: \"Show me my latest alerts\"\nYou: call tool 'index_explorer' with { query: 'indices containing user alerts' }\nTool result: [{ type: \"index\", name: '.alerts' }]\n",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.core.product_documentation",
+      "type": "builtin",
+      "description": "Search and retrieve documentation about Elastic products (Kibana, Elasticsearch, Elastic Security, Elastic Observability).",
+      "tags": [],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.streams.inspect_streams",
+      "type": "builtin",
+      "description": "Inspect one or many streams at once, returning only the requested aspects. Replaces the need to call multiple individual tools.\n\n**When to use:**\n- User asks \"what streams do I have?\" \u2014 use names: [\"*\"], aspects: [\"overview\"]\n- User asks about quality/storage across all streams \u2014 use names: [\"*\"], aspects: [\"quality\"] or [\"lifecycle\"]\n- User wants a deep dive on one stream \u2014 use names: [\"logs.ecs.nginx\"], aspects: [\"overview\", \"schema\", \"processing\", \"routing\"]\n- User asks about multiple specific streams \u2014 use names: [\"stream1\", \"stream2\"], aspects: [\"overview\", \"quality\"]\n\n**Aspects:**\n- overview: name, type, description, document count (always included for context)\n- schema: mapped fields (own + inherited with source attribution), unmapped fields from recent documents, dynamic_mapping setting, and an interpretive note explaining field indexing behavior for this stream\n- quality: assessment (primary interpretation \u2014 follow this), quality_score, pipeline_updated_at, last_failure_at, failure data per time window (last_5m, last_24h, since_pipeline_update \u2014 each with count and pct), failure store status\n- lifecycle: retention policy (effective, with phase summary for ILM), storage size, document count\n- processing: full processing chain with source attribution (own + inherited steps for wired streams)\n- routing: child stream routes with conditions (wired streams only)\n\nAll aspects return current-state data. For time-windowed diagnostics, use platform.streams.diagnose_stream.\n\n**Query streams:** Query streams are read-only ES|QL views and are included in names: [\"*\"] results. Only schema/quality/lifecycle/processing/routing aspects do not apply to them; instead, when overview is requested the result includes a `query` object with the resolved ES|QL (`query.esql`), the backing view name, and any field descriptions. Use it to understand what the stream selects and which sources it reads from.\n\n**Important:** The processing and schema aspects already include inherited ancestor data\nwith source attribution. Do not call this tool on parent streams to check inherited\nconfiguration \u2014 it is already resolved in the child's result.\n\n**Efficiency:** Do not re-call for streams you already inspected in this conversation unless a write tool has modified them since. Results are current-state and remain valid until a write occurs.",
+      "tags": [
+        "streams"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.streams.diagnose_stream",
+      "type": "builtin",
+      "description": "Gathers time-windowed health metrics, failure store error samples, and degraded\nfield breakdown for a single stream. This is the diagnostic investigation tool \u2014\nuse it to understand what is going wrong and when.\n\nResults include a `time_window` showing the exact time range queried, and each\nerror group includes `first_seen` / `last_seen` timestamps. Use `last_seen` to\ndetermine whether errors are still active or historical.\n\nWhen degraded documents are present, `degraded_fields` lists which specific\nfields triggered the `_ignored` flag during indexing (e.g. a keyword value\nexceeding `ignore_above`, or a type mismatch with `ignore_malformed`). Each\nentry includes the field name, document count, last occurrence timestamp,\na `mapping` object with the effective Elasticsearch mapping constraints for\nthat field (e.g. `{ type: \"keyword\", ignore_above: 8191 }`), and a\n`sample_value` showing the actual field value from a recent degraded document.\nCompare `sample_value` against `mapping` constraints to determine root cause\n(e.g. string length vs `ignore_above` limit). Do not guess or assume defaults.\n\n**Before attempting fixes:** If `last_seen` is not near `time_window.to`, the errors\nmay be stale. Re-diagnose with a shorter time_range (e.g. \"1h\") to confirm the issue\nstill persists. Do not fix stale errors.\n\nEach error group includes a `sample_document` \u2014 the flattened original document that\nfailed ingestion. Use these field values to understand what triggered the error (e.g.\nwhat value a field contained when a type mismatch occurred).\n\n**Cross-referencing with configuration:** This tool returns diagnostic data only \u2014 you\nperform the analysis. For the processing chain, call platform.streams.inspect_streams with aspects\n`['processing']` in parallel. Error messages typically name the operation that failed\nand the field/value involved \u2014 match these against the `action` and field parameters\nof steps in the processing chain to identify the responsible step and which stream\n(via `source` attribution) defines it. For ad-hoc queries against the full failure\nstore (custom filters, aggregations, more samples), use platform.streams.query_documents with\nsource: 'failures'.\n\n**When to use:**\n- User asks \"why is my stream broken?\" or \"diagnose issues with stream X\"\n- User reports ingestion failures or data quality problems\n- platform.streams.inspect_streams shows high degraded_pct \u2014 call this tool for per-field breakdown\n- Before attempting to fix processing \u2014 diagnose first to understand the root cause\n- After applying a fix \u2014 only verify when the user asks. Compare last_seen on error groups to the applied_at timestamp from the write result. If last_seen < applied_at, those errors are pre-fix residuals\n\n**When NOT to use:**\n- User just wants to browse data \u2014 use platform.streams.inspect_streams\n- User wants general stream info without problems \u2014 use platform.streams.inspect_streams\n\n**Efficiency:** If you already called this tool for the same stream earlier in the conversation and no write tools have modified it since, the prior result is still valid \u2014 do not re-call. When you need both diagnostic data and configuration context, call this tool and platform.streams.inspect_streams in parallel.",
+      "tags": [
+        "streams"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.streams.query_documents",
+      "type": "builtin",
+      "description": "Queries or aggregates data from a stream using a natural language description. Supports querying both the primary data store and the failure store (rejected documents) via the `source` parameter. The tool translates the description into an Elasticsearch query internally. Returns documents in flat dot-notation format and/or aggregation results.\n\n**When to use:**\n- User asks to \"show me recent documents\" or \"what does the data look like?\"\n- User asks about specific field values or patterns in the data\n- User wants aggregated metrics (counts, top values, histograms, etc.)\n- After platform.streams.diagnose_stream flags processing errors \u2014 use source: \"failures\" to see raw rejected documents, run custom filters, or aggregate error patterns\n\n**When NOT to use:**\n- User wants pre-computed quality/lifecycle metrics \u2014 use the focused tool\n- User wants field definitions \u2014 use platform.streams.inspect_streams with aspects: [\"schema\"]\n- First-pass failure diagnosis \u2014 use platform.streams.diagnose_stream first for grouped error analysis with sample documents. Use source: \"failures\" here for follow-up queries when you need more samples or custom filters\n\n**Formatting documents:**\n- Full/raw documents: show each as a compact \"field.name: value\" block. Omit stream.name (already known).\n- Browsing/summarizing: show a table with @timestamp and 3-4 key fields (e.g. body.text, host.name, log.level). Mention how many fields were omitted.\n- Failure store documents: show error.type and error.message first, then key fields from document.source.* that relate to the error.\n**Formatting aggregations:** Always include the metric value alongside each key (e.g. \"host2 \u2014 1,532 docs\", \"200 \u2014 45.2%\"). For terms aggregations, show the doc_count. For metric aggregations, show the computed value with units where known.",
+      "tags": [
+        "streams"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.streams.design_pipeline",
+      "type": "builtin",
+      "description": "Designs changes to a stream's processing pipeline based on a natural language description. Does NOT apply changes \u2014 pass the result to the update stream tool to commit.\n\nThe tool fetches the stream's current pipeline, naming convention (ECS/OTel), and schema internally. It applies your described change to the existing pipeline, simulates it against sample documents, and returns the full proposed pipeline for review.\n\n**When to use:**\n- Adding new processing steps: \"parse Apache logs from body.text using grok\"\n- Modifying existing steps: \"change the grok pattern to also capture the port\"\n- Removing steps: \"remove the convert step for status\"\n- Building a pipeline from scratch: \"parse syslog, extract timestamps, convert types, and clean up temp fields\"\n\n**When NOT to use:**\n- Inspecting the current pipeline: use the inspect streams tool with aspects: [\"processing\"]\n- Applying the pipeline: pass the returned steps to the update stream tool\n\n**Important:**\n- Sample documents are fetched automatically from the stream. You do not need to fetch or pass documents.\n- The returned steps array is the COMPLETE proposed pipeline \u2014 pass it directly to the update stream tool to replace the stream's processing.\n- Simulation may be partial when existing steps are modified (documents already reflect prior processing).\n\n**Result:** Returns the complete proposed pipeline, a summary, field changes with sample values, simulation results (success rate, errors, simulation mode), samples info, and any warnings or hints.",
+      "tags": [
+        "streams"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.streams.list_ilm_policies",
+      "type": "builtin",
+      "description": "List available ILM (Index Lifecycle Management) policies on this cluster.\n\n**When to use:**\n- User wants to set ILM retention but doesn't know the policy name\n- User asks \"what ILM policies are available?\" or \"show me lifecycle policies\"\n- Before suggesting an ILM policy in update_stream \u2014 verify the policy exists\n\nReturns policy names, full phase definitions (with min_age, rollover, delete settings),\nmanaged/deprecated status, and which streams and indices currently use each policy.\nInternal system policies (managed + dot-prefixed) are filtered out.\nOn serverless deployments, returns ilm_available: false.\n\n**Efficiency:** ILM policies are cluster-global. Call once per conversation, not per stream.\nResults remain valid until the user creates or modifies policies (outside this skill's scope).",
+      "tags": [
+        "streams"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.streams.update_stream",
+      "type": "builtin",
+      "description": "Applies changes to a stream's configuration. This tool MUTATES state.\n\n**Intent gate:** Only call this tool when the user has given a direct, explicit instruction\nto apply changes \u2014 e.g. \"fix it\", \"apply it\", \"go ahead\", \"do it\", \"yes\". Questions like\n\"how can we fix this?\", \"what would you suggest?\", or \"what's the best approach?\" are NOT\ninstructions \u2014 they are requests for analysis. For those, use platform.streams.design_pipeline to\ninvestigate and present findings, then stop and wait for the user to confirm.\n\n**Cancellation:** If this tool returns \"The user chose not to proceed with this action\",\nacknowledge the cancellation for this specific operation. Do NOT retry the same operation\nwith different parameters. You may continue with other unrelated operations the user\nrequested, or ask how they want to proceed.\n\n**Processing:** Set changes.processing to the complete pipeline array. The array replaces the entire pipeline.\n- Use platform.streams.design_pipeline to design new or modified steps. To remove a step, omit it from the array. To reorder, change the array order.\n- Get the current pipeline from platform.streams.inspect_streams (aspects: [\"processing\"]) or from a platform.streams.design_pipeline result.\n- Never construct step objects manually \u2014 only use objects from platform.streams.design_pipeline or platform.streams.inspect_streams.\n- The steps MUST go in changes.processing, not as a top-level parameter.\n\n**Other changes:**\n- description: Update stream description\n- lifecycle: Set retention (inherit, dsl with data_retention, or ilm with policy name)\n- fields: Map fields with type definitions (e.g. {\"response_time\":{\"type\":\"long\"}})\n- failure_store: Configure failure store (inherit, disabled, enabled with retention)\n\n**Query streams:** Set changes.query = {esql, field_descriptions?} to create or update a query stream (a read-only ES|QL view).\n- If the named stream does not exist, it is created as a query stream. If it already exists as a query stream, its ES|QL is updated.\n- changes.query is mutually exclusive with processing, lifecycle, fields, and failure_store \u2014 query streams have no ingest configuration. It may be combined with changes.description.\n- For a child query stream, the esql FROM clause must reference the parent stream (or its ES|QL view). Use platform.streams.inspect_streams on the parent first if unsure of the source.",
+      "tags": [
+        "streams"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.streams.create_partition",
+      "type": "builtin",
+      "description": "Creates a child stream (partition) under a parent wired stream with a routing condition. This tool MUTATES state \u2014 only call when the user explicitly asks to create a partition, route, or child stream.\n\n**Cancellation:** If this tool returns \"The user chose not to proceed with this action\", stop immediately, acknowledge, and ask how to proceed. Do NOT retry.\n\nChild names MUST follow the parent.childname convention: for parent \"logs.ecs\", use \"logs.ecs.nginx\"; for parent \"logs.otel\", use \"logs.otel.nginx\".\n\nOnly works on wired streams. When creating multiple children under the same parent, call this tool sequentially (they modify the parent's routing table). Children under different parents can be created in parallel.",
+      "tags": [
+        "streams"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    },
+    {
+      "id": "platform.streams.delete_stream",
+      "type": "builtin",
+      "description": "Permanently deletes a stream and all of its child streams. This is irreversible and MUTATES state \u2014 only call when the user explicitly instructs you to delete.\n\n**Cancellation:** If this tool returns \"The user chose not to proceed with this action\", acknowledge the cancellation for this specific operation. Do NOT retry the same operation. You may continue with other unrelated operations the user requested.\n\n**When to use:**\n- User explicitly says \"delete stream X\" or \"remove stream X\"\n\n**When NOT to use:**\n- User is asking questions (\"what would happen if we deleted...?\") \u2014 explain the impact instead\n- User wants to stop routing to a child \u2014 suggest disabling the routing rule on the parent instead\n- User wants to remove processors or field mappings \u2014 use the appropriate focused tool",
+      "tags": [
+        "streams"
+      ],
+      "configuration": {},
+      "readonly": true,
+      "experimental": false
+    }
+  ]
+}

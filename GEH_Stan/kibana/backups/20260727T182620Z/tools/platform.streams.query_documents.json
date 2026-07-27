@@ -1,0 +1,11 @@
+{
+  "id": "platform.streams.query_documents",
+  "type": "builtin",
+  "description": "Queries or aggregates data from a stream using a natural language description. Supports querying both the primary data store and the failure store (rejected documents) via the `source` parameter. The tool translates the description into an Elasticsearch query internally. Returns documents in flat dot-notation format and/or aggregation results.\n\n**When to use:**\n- User asks to \"show me recent documents\" or \"what does the data look like?\"\n- User asks about specific field values or patterns in the data\n- User wants aggregated metrics (counts, top values, histograms, etc.)\n- After platform.streams.diagnose_stream flags processing errors \u2014 use source: \"failures\" to see raw rejected documents, run custom filters, or aggregate error patterns\n\n**When NOT to use:**\n- User wants pre-computed quality/lifecycle metrics \u2014 use the focused tool\n- User wants field definitions \u2014 use platform.streams.inspect_streams with aspects: [\"schema\"]\n- First-pass failure diagnosis \u2014 use platform.streams.diagnose_stream first for grouped error analysis with sample documents. Use source: \"failures\" here for follow-up queries when you need more samples or custom filters\n\n**Formatting documents:**\n- Full/raw documents: show each as a compact \"field.name: value\" block. Omit stream.name (already known).\n- Browsing/summarizing: show a table with @timestamp and 3-4 key fields (e.g. body.text, host.name, log.level). Mention how many fields were omitted.\n- Failure store documents: show error.type and error.message first, then key fields from document.source.* that relate to the error.\n**Formatting aggregations:** Always include the metric value alongside each key (e.g. \"host2 \u2014 1,532 docs\", \"200 \u2014 45.2%\"). For terms aggregations, show the doc_count. For metric aggregations, show the computed value with units where known.",
+  "tags": [
+    "streams"
+  ],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

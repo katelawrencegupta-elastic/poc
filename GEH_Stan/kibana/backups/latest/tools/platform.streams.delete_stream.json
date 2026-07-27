@@ -1,0 +1,11 @@
+{
+  "id": "platform.streams.delete_stream",
+  "type": "builtin",
+  "description": "Permanently deletes a stream and all of its child streams. This is irreversible and MUTATES state \u2014 only call when the user explicitly instructs you to delete.\n\n**Cancellation:** If this tool returns \"The user chose not to proceed with this action\", acknowledge the cancellation for this specific operation. Do NOT retry the same operation. You may continue with other unrelated operations the user requested.\n\n**When to use:**\n- User explicitly says \"delete stream X\" or \"remove stream X\"\n\n**When NOT to use:**\n- User is asking questions (\"what would happen if we deleted...?\") \u2014 explain the impact instead\n- User wants to stop routing to a child \u2014 suggest disabling the routing rule on the parent instead\n- User wants to remove processors or field mappings \u2014 use the appropriate focused tool",
+  "tags": [
+    "streams"
+  ],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

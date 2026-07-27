@@ -1,0 +1,11 @@
+{
+  "id": "platform.streams.list_ilm_policies",
+  "type": "builtin",
+  "description": "List available ILM (Index Lifecycle Management) policies on this cluster.\n\n**When to use:**\n- User wants to set ILM retention but doesn't know the policy name\n- User asks \"what ILM policies are available?\" or \"show me lifecycle policies\"\n- Before suggesting an ILM policy in update_stream \u2014 verify the policy exists\n\nReturns policy names, full phase definitions (with min_age, rollover, delete settings),\nmanaged/deprecated status, and which streams and indices currently use each policy.\nInternal system policies (managed + dot-prefixed) are filtered out.\nOn serverless deployments, returns ilm_available: false.\n\n**Efficiency:** ILM policies are cluster-global. Call once per conversation, not per stream.\nResults remain valid until the user creates or modifies policies (outside this skill's scope).",
+  "tags": [
+    "streams"
+  ],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}

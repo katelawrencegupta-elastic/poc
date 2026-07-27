@@ -1,0 +1,13 @@
+{
+  "id": "platform.workflows.get_step_definitions",
+  "type": "builtin",
+  "description": "Get available workflow step types, their parameters, and usage examples.\n\n**When to use:** Before generating step YAML, to discover available step types, their input params (`with` block), config params (step-level fields like `connector-id`), and usage examples.\n**When NOT to use:** To find connector instances configured in the environment (use get_connectors instead).\n\nSupports filtering by exact step type, keyword search, or category.\nDeprecated steps are excluded from broad discovery by default, but exact step type lookups still return them.\nWhen a small number of results is returned, input/config parameter summaries and usage examples are included.\nCommon step properties (name, type, if, timeout, on-failure) are NOT listed per step -- they apply to all steps (see skill prompt).\nSet includeOutputSummary=true to get a compact one-line summary of each step's output fields (useful for knowing what data is available via `{{ steps.name.field }}`).\nSet includeFullSchema=true to get the full JSON Schema for step input params (use sparingly -- only when examples are insufficient).",
+  "tags": [
+    "workflows",
+    "yaml",
+    "steps"
+  ],
+  "configuration": {},
+  "readonly": true,
+  "experimental": false
+}
