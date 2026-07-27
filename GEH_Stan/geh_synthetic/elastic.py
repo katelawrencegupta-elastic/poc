@@ -9,6 +9,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 
@@ -22,6 +23,10 @@ DEFAULT_REPAIR_INDEX = "ct_system_repair_history"
 DEFAULT_MANUAL_INDEX = "ct_device_manuals"
 DEFAULT_PARTS_INDEX = "ct_machine_parts"
 DEFAULT_INDICATOR_SOURCE_MONTH = "ct_sitedata_ext2_indicator_events_m-2026.07.01"
+CT_HYBRID_SEARCH_APP = "ct-hybrid-search-api"
+SEARCH_APPLICATION_DEFINITIONS_DIR = (
+    Path(__file__).resolve().parent.parent / "kibana" / "search_applications"
+)
 
 
 @dataclass
@@ -120,6 +125,80 @@ def request_json(
 
 def ping(cfg: ElasticConfig) -> dict[str, Any]:
     return request_json(cfg, "GET", "/")
+
+
+def upsert_search_application(
+    cfg: ElasticConfig,
+    name: str,
+    definition: dict[str, Any],
+) -> dict[str, Any]:
+    """Create or replace an Elasticsearch Search Application."""
+    return request_json(
+        cfg,
+        "PUT",
+        f"/_application/search_application/{name}",
+        json.dumps(definition).encode("utf-8"),
+    )
+
+
+def load_search_application_definition(
+    name: str,
+    *,
+    directory: Path | None = None,
+) -> dict[str, Any]:
+    root = directory or SEARCH_APPLICATION_DEFINITIONS_DIR
+    path = root / name
+    if not path.is_file():
+        raise FileNotFoundError(f"Search application definition not found: {path}")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def deploy_ct_hybrid_search_application(
+    cfg: ElasticConfig,
+    *,
+    directory: Path | None = None,
+    name: str = CT_HYBRID_SEARCH_APP,
+) -> dict[str, Any]:
+    definition = load_search_application_definition(
+        f"{name}.json", directory=directory
+    )
+    result = upsert_search_application(cfg, name, definition)
+    return {
+        "name": name,
+        "result": result,
+        "endpoint": f"{cfg.url}/_application/search_application/{name}/_search",
+    }
+
+
+def run_ct_hybrid_search(
+    cfg: ElasticConfig,
+    *,
+    query: str,
+    size: int = 10,
+    hospital: str = "",
+    sysid: str = "",
+    severity: str = "",
+    rank_window_size: int = 100,
+    rank_constant: int = 60,
+    name: str = CT_HYBRID_SEARCH_APP,
+) -> dict[str, Any]:
+    body = {
+        "params": {
+            "query": query,
+            "size": size,
+            "hospital": hospital,
+            "sysid": sysid,
+            "severity": severity,
+            "rank_window_size": rank_window_size,
+            "rank_constant": rank_constant,
+        }
+    }
+    return request_json(
+        cfg,
+        "POST",
+        f"/_application/search_application/{name}/_search",
+        json.dumps(body).encode("utf-8"),
+    )
 
 
 def bulk(

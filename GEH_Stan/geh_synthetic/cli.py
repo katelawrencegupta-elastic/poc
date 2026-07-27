@@ -17,7 +17,9 @@ from .elastic import (
     DEFAULT_MANUAL_INDEX,
     DEFAULT_PARTS_INDEX,
     DEFAULT_REPAIR_INDEX,
+    CT_HYBRID_SEARCH_APP,
     ElasticConfig,
+    deploy_ct_hybrid_search_application,
     fetch_indicator_system_keys,
     index_honeycomb,
     index_honeycomb_samples,
@@ -26,14 +28,17 @@ from .elastic import (
     index_parts,
     index_repairs,
     ping,
+    run_ct_hybrid_search,
 )
 from .kibana import (
     DEFAULT_KIBANA_URL,
     DETAIL_DASHBOARD_ID,
     OVERVIEW_DASHBOARD_ID,
     PCD_COLLIMATION_WORKFLOW_ID,
+    CT_HYBRID_SEARCH_WORKFLOW_ID,
     KibanaConfig,
     dashboard_url,
+    deploy_ct_hybrid_search_workflow,
     deploy_geh_dashboards,
     deploy_pcd_collimation_rule_and_workflow,
 )
@@ -682,6 +687,70 @@ def _cmd_alerts(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_hybrid_search_api(args: argparse.Namespace) -> int:
+    es = _elastic_config(args)
+    app = deploy_ct_hybrid_search_application(
+        es,
+        directory=Path(args.search_app_dir) if args.search_app_dir else None,
+        name=args.name,
+    )
+    kbn = KibanaConfig.from_env(
+        url=args.kibana_url,
+        api_key=args.api_key,
+        username=args.user,
+        password=args.password,
+        verify_certs=False if args.insecure else None,
+        elastic=es,
+    )
+    wf = deploy_ct_hybrid_search_workflow(
+        kbn,
+        workflow_directory=Path(args.workflow_dir) if args.workflow_dir else None,
+    )
+    print(
+        f"search_application={app['name']}\n"
+        f"  POST {app['endpoint']}\n"
+        f"workflow={wf['workflow_id']} enabled={wf['workflow'].get('enabled')} "
+        f"valid={wf['workflow'].get('valid')}\n"
+        f"  POST {wf['run_url']}",
+        file=sys.stderr,
+    )
+    if args.query:
+        hits = run_ct_hybrid_search(
+            es,
+            query=args.query,
+            size=args.size,
+            hospital=args.hospital or "",
+            sysid=args.sysid or "",
+            severity=args.severity or "",
+            rank_window_size=args.rank_window_size,
+            rank_constant=args.rank_constant,
+            name=args.name,
+        )
+        print(json.dumps({
+            "search_application": app["name"],
+            "endpoint": app["endpoint"],
+            "workflow_id": wf["workflow_id"],
+            "run_url": wf["run_url"],
+            "sample_hits": [
+                {
+                    "_id": h.get("_id"),
+                    "_score": h.get("_score"),
+                    **(h.get("_source") or {}),
+                }
+                for h in ((hits.get("hits") or {}).get("hits") or [])
+            ],
+        }, indent=2))
+    else:
+        print(json.dumps({
+            "search_application": app["name"],
+            "endpoint": app["endpoint"],
+            "workflow_id": wf["workflow_id"],
+            "run_url": wf["run_url"],
+            "workflow_valid": wf["workflow"].get("valid"),
+        }))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="geh_synthetic",
@@ -1029,6 +1098,43 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_elastic_args(alerts)
     alerts.set_defaults(func=_cmd_alerts, to_elastic=True)
+
+    hybrid = sub.add_parser(
+        "hybrid-search-api",
+        help=(
+            "Upsert CT hybrid search REST endpoint "
+            f"(Search Application + workflow `{CT_HYBRID_SEARCH_WORKFLOW_ID}`)"
+        ),
+    )
+    hybrid.add_argument(
+        "--name",
+        default=CT_HYBRID_SEARCH_APP,
+        help=f"Search application / workflow id (default: {CT_HYBRID_SEARCH_APP})",
+    )
+    hybrid.add_argument(
+        "--kibana-url",
+        default=None,
+        help=f"Kibana URL (or KIBANA_URL; default: {DEFAULT_KIBANA_URL})",
+    )
+    hybrid.add_argument(
+        "--search-app-dir",
+        default=None,
+        help="Directory containing search application JSON definitions",
+    )
+    hybrid.add_argument(
+        "--workflow-dir",
+        default=None,
+        help="Directory containing workflow YAML definitions",
+    )
+    hybrid.add_argument("--query", default=None, help="Optional smoke-test query")
+    hybrid.add_argument("--size", type=int, default=5, help="Smoke-test size")
+    hybrid.add_argument("--hospital", default="", help="Smoke-test hospital filter")
+    hybrid.add_argument("--sysid", default="", help="Smoke-test sysid filter")
+    hybrid.add_argument("--severity", default="", help="Smoke-test severity filter")
+    hybrid.add_argument("--rank-window-size", type=int, default=100)
+    hybrid.add_argument("--rank-constant", type=int, default=60)
+    _add_elastic_args(hybrid)
+    hybrid.set_defaults(func=_cmd_hybrid_search_api, to_elastic=True)
 
     return p
 

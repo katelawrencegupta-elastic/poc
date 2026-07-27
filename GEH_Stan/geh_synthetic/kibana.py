@@ -23,6 +23,7 @@ DETAIL_DASHBOARD_ID = "geh-hospital-detail"
 
 PCD_COLLIMATION_WORKFLOW_ID = "pcd-collimation-fail-critical-summary"
 PCD_COLLIMATION_RULE_TAG = "geh:pcd-collimation-fail-critical"
+CT_HYBRID_SEARCH_WORKFLOW_ID = "ct-hybrid-search-api"
 
 DASHBOARD_DEFINITIONS_DIR = (
     Path(__file__).resolve().parent.parent / "kibana" / "dashboards"
@@ -329,4 +330,23 @@ def deploy_pcd_collimation_rule_and_workflow(
         "rule_id": rule.get("id"),
         "workflow_url": workflow_url(cfg, PCD_COLLIMATION_WORKFLOW_ID),
         "rule_url": rule_url(cfg, rule["id"]) if rule.get("id") else None,
+    }
+
+
+def deploy_ct_hybrid_search_workflow(
+    cfg: KibanaConfig,
+    *,
+    workflow_directory: Path | None = None,
+) -> dict[str, Any]:
+    """Upsert the CT hybrid search manual/API workflow."""
+    workflow_yaml = load_workflow_yaml(
+        f"{CT_HYBRID_SEARCH_WORKFLOW_ID}.yaml",
+        directory=workflow_directory,
+    )
+    workflow = upsert_workflow(cfg, CT_HYBRID_SEARCH_WORKFLOW_ID, workflow_yaml)
+    return {
+        "workflow": workflow,
+        "workflow_id": CT_HYBRID_SEARCH_WORKFLOW_ID,
+        "workflow_url": workflow_url(cfg, CT_HYBRID_SEARCH_WORKFLOW_ID),
+        "run_url": f"{cfg.url}/api/workflows/workflow/{CT_HYBRID_SEARCH_WORKFLOW_ID}/run",
     }

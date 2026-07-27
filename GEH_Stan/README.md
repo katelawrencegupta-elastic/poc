@@ -137,6 +137,39 @@ python -m geh_synthetic alerts
 
 Definitions: `kibana/rules/pcd-collimation-fail-critical.json`, `kibana/workflows/pcd-collimation-fail-critical-summary.yaml`.
 
+## CT hybrid search REST API
+
+Upsert the Search Application + manual workflow:
+
+```bash
+python -m geh_synthetic hybrid-search-api --query "gantry abort" --severity Critical
+```
+
+| Asset | Endpoint |
+|-------|----------|
+| Search Application (sync) | `POST https://klggehpoc-eb6d47.es.us-central1.gcp.elastic.cloud:443/_application/search_application/ct-hybrid-search-api/_search` |
+| Workflow run (async) | `POST https://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/api/workflows/workflow/ct-hybrid-search-api/run` |
+
+Request body (Search Application):
+
+```json
+{
+  "params": {
+    "query": "gantry abort detector",
+    "size": 10,
+    "hospital": "",
+    "sysid": "",
+    "severity": "Critical",
+    "rank_window_size": 100,
+    "rank_constant": 60
+  }
+}
+```
+
+Hybrid ranking: BM25 (`multi_match`) + semantic (`indicator_message_semantic`) fused with RRF over `ct_sitedata_ext2_indicator_events_m-2026.07.01`.
+
+Definitions: `kibana/search_applications/ct-hybrid-search-api.json`, `kibana/workflows/ct-hybrid-search-api.yaml`.
+
 ## Sample data
 
 - `sample_data/mock_CT_dynamic_indicator_TestMachineData (1).csv` — Kibana export used as the value catalog (not the emit format)
