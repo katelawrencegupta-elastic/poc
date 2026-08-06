@@ -1,0 +1,437 @@
+{
+  "endpoint": "https://klggehpoc-eb6d47.es.us-central1.gcp.elastic.cloud:443/_application/search_application/ct-hybrid-search-api/_search",
+  "results": [
+    {
+      "n": 1,
+      "ok": true,
+      "status": 200,
+      "client_ms": 889.1,
+      "es_took_ms": 568,
+      "total": {
+        "value": 4260,
+        "relation": "eq"
+      },
+      "returned": 3,
+      "params": {
+        "query": "gantry abort detector",
+        "size": 3,
+        "severity": "Critical"
+      },
+      "top": [
+        {
+          "_id": "c368258caa8548b18d5b",
+          "_score": 0.031544957,
+          "sysid": "CTDUKE01",
+          "hospital": "Duke University Hospital",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "2f594d47b4bf4a43996e",
+          "_score": 0.030834913,
+          "sysid": "CTUCLA01",
+          "hospital": "UCLA Medical Center",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "32319c7d9d704240af0f",
+          "_score": 0.03036577,
+          "sysid": "CTUCLA01",
+          "hospital": "UCLA Medical Center",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "ok": true,
+      "status": 200,
+      "client_ms": 333.3,
+      "es_took_ms": 184,
+      "total": {
+        "value": 60,
+        "relation": "eq"
+      },
+      "returned": 3,
+      "params": {
+        "query": "collimation failure bad pixels",
+        "size": 3,
+        "severity": "Critical"
+      },
+      "top": [
+        {
+          "_id": "7f4444a9debd4166b9eb",
+          "_score": 0.01369863,
+          "sysid": "CTAPHP02",
+          "hospital": "AP-HP Pitie-Salpetriere",
+          "severity": "Critical",
+          "message": "Creating DICOM association failed"
+        },
+        {
+          "_id": "1106d9442da24d81aff6",
+          "_score": 0.013513514,
+          "sysid": "CTUCLA01",
+          "hospital": "UCLA Medical Center",
+          "severity": "Critical",
+          "message": "Creating DICOM association failed"
+        },
+        {
+          "_id": "0899df801efe4e91bc2a",
+          "_score": 0.013333334,
+          "sysid": "CTNMH01",
+          "hospital": "Northwestern Memorial Hospital",
+          "severity": "Critical",
+          "message": "Creating DICOM association failed"
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "ok": true,
+      "status": 200,
+      "client_ms": 308.7,
+      "es_took_ms": 160,
+      "total": {
+        "value": 60,
+        "relation": "eq"
+      },
+      "returned": 3,
+      "params": {
+        "query": "UPS battery power quality",
+        "size": 3,
+        "severity": ""
+      },
+      "top": [
+        {
+          "_id": "6de84330780149f09000",
+          "_score": 0.016393442,
+          "sysid": "CTKAR72",
+          "hospital": "Karolinska University Hospital",
+          "severity": "N/A",
+          "message": "Failed QC recon job"
+        },
+        {
+          "_id": "44979c298ee843f4bd5e",
+          "_score": 0.016129032,
+          "sysid": "CTAPHP02",
+          "hospital": "AP-HP Pitie-Salpetriere",
+          "severity": "N/A",
+          "message": "Failed QC recon job"
+        },
+        {
+          "_id": "79169f7804264a08b65a",
+          "_score": 0.015873017,
+          "sysid": "CTAPHP01",
+          "hospital": "AP-HP Pitie-Salpetriere",
+          "severity": "N/A",
+          "message": "Failed QC recon job"
+        }
+      ]
+    },
+    {
+      "n": 4,
+      "ok": true,
+      "status": 200,
+      "client_ms": 311.4,
+      "es_took_ms": 172,
+      "total": {
+        "value": 60,
+        "relation": "eq"
+      },
+      "returned": 3,
+      "params": {
+        "query": "table elevation fault",
+        "size": 3,
+        "severity": "Warning"
+      },
+      "top": [
+        {
+          "_id": "07218d08226b47adb494",
+          "_score": 0.016393442,
+          "sysid": "CTUCLA02",
+          "hospital": "UCLA Medical Center",
+          "severity": "Warning",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "a62849673cba4e8d947b",
+          "_score": 0.016129032,
+          "sysid": "CTAPHP01",
+          "hospital": "AP-HP Pitie-Salpetriere",
+          "severity": "Warning",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "6b5b8135a9b244b68b6d",
+          "_score": 0.015873017,
+          "sysid": "CTAPHP01",
+          "hospital": "AP-HP Pitie-Salpetriere",
+          "severity": "Warning",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        }
+      ]
+    },
+    {
+      "n": 5,
+      "ok": true,
+      "status": 200,
+      "client_ms": 247.5,
+      "es_took_ms": 107,
+      "total": {
+        "value": 60,
+        "relation": "eq"
+      },
+      "returned": 3,
+      "params": {
+        "query": "cardiac recon crash",
+        "size": 3,
+        "severity": "Critical",
+        "sysid": "CTDUKE01"
+      },
+      "top": [
+        {
+          "_id": "20b17a2e54b84e5c83cc",
+          "_score": 0.016393442,
+          "sysid": "CTDUKE01",
+          "hospital": "Duke University Hospital",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "75818b99166744628bf3",
+          "_score": 0.016129032,
+          "sysid": "CTDUKE01",
+          "hospital": "Duke University Hospital",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "38bc33db075c4028b485",
+          "_score": 0.015873017,
+          "sysid": "CTDUKE01",
+          "hospital": "Duke University Hospital",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        }
+      ]
+    },
+    {
+      "n": 6,
+      "ok": true,
+      "status": 200,
+      "client_ms": 253.6,
+      "es_took_ms": 109,
+      "total": {
+        "value": 1319,
+        "relation": "eq"
+      },
+      "returned": 3,
+      "params": {
+        "query": "DICOM association error",
+        "size": 3,
+        "hospital": "UCLA Medical Center"
+      },
+      "top": [
+        {
+          "_id": "f3e3cac3f55b41b0b3e9",
+          "_score": 0.024868704,
+          "sysid": "CTUCLA01",
+          "hospital": "UCLA Medical Center",
+          "severity": "Critical",
+          "message": "Creating DICOM association failed"
+        },
+        {
+          "_id": "ba43fed331e749e9a0c0",
+          "_score": 0.023499016,
+          "sysid": "CTUCLA01",
+          "hospital": "UCLA Medical Center",
+          "severity": "Critical",
+          "message": "Creating DICOM association failed"
+        },
+        {
+          "_id": "e8c5aa19253e4da4a7fd",
+          "_score": 0.020525452,
+          "sysid": "CTUCLA02",
+          "hospital": "UCLA Medical Center",
+          "severity": "Critical",
+          "message": "Creating DICOM association failed"
+        }
+      ]
+    },
+    {
+      "n": 7,
+      "ok": true,
+      "status": 200,
+      "client_ms": 248.3,
+      "es_took_ms": 110,
+      "total": {
+        "value": 60,
+        "relation": "eq"
+      },
+      "returned": 3,
+      "params": {
+        "query": "cooling over temperature HV tank",
+        "size": 3,
+        "severity": "Warning"
+      },
+      "top": [
+        {
+          "_id": "07218d08226b47adb494",
+          "_score": 0.016393442,
+          "sysid": "CTUCLA02",
+          "hospital": "UCLA Medical Center",
+          "severity": "Warning",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "a62849673cba4e8d947b",
+          "_score": 0.016129032,
+          "sysid": "CTAPHP01",
+          "hospital": "AP-HP Pitie-Salpetriere",
+          "severity": "Warning",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "3625411ad2404b80bf02",
+          "_score": 0.015873017,
+          "sysid": "CTUCLA02",
+          "hospital": "UCLA Medical Center",
+          "severity": "Warning",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        }
+      ]
+    },
+    {
+      "n": 8,
+      "ok": true,
+      "status": 200,
+      "client_ms": 250.1,
+      "es_took_ms": 110,
+      "total": {
+        "value": 2217,
+        "relation": "eq"
+      },
+      "returned": 3,
+      "params": {
+        "query": "scan abort hardware down",
+        "size": 3,
+        "severity": "Critical"
+      },
+      "top": [
+        {
+          "_id": "c368258caa8548b18d5b",
+          "_score": 0.029857397,
+          "sysid": "CTDUKE01",
+          "hospital": "Duke University Hospital",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "2f594d47b4bf4a43996e",
+          "_score": 0.029198635,
+          "sysid": "CTUCLA01",
+          "hospital": "UCLA Medical Center",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "32319c7d9d704240af0f",
+          "_score": 0.028778467,
+          "sysid": "CTUCLA01",
+          "hospital": "UCLA Medical Center",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        }
+      ]
+    },
+    {
+      "n": 9,
+      "ok": true,
+      "status": 200,
+      "client_ms": 253.3,
+      "es_took_ms": 105,
+      "total": {
+        "value": 1404,
+        "relation": "eq"
+      },
+      "returned": 3,
+      "params": {
+        "query": "laser alignment scout FOV",
+        "size": 3,
+        "severity": ""
+      },
+      "top": [
+        {
+          "_id": "ee6e960fcc064228baaa",
+          "_score": 0.016393442,
+          "sysid": "CTAPHP01",
+          "hospital": "AP-HP Pitie-Salpetriere",
+          "severity": "Warning",
+          "message": "Scout image not available"
+        },
+        {
+          "_id": "d0f02b82abeb4b5592db",
+          "_score": 0.016393442,
+          "sysid": "CTNMH02D",
+          "hospital": "Northwestern Memorial Hospital",
+          "severity": "Informational",
+          "message": "E037,SESSION_TYPE :SCAN_SESSION , CT L SPINE Helical SmartFlux 80mm : EN: 037, PN: 27.1 CT L SPINE Helical SmartFlux 80m"
+        },
+        {
+          "_id": "7b67e9afe7be4ce99291",
+          "_score": 0.016129032,
+          "sysid": "CTDUKE02",
+          "hospital": "Duke University Hospital",
+          "severity": "Informational",
+          "message": "E031,SESSION_TYPE :SCAN_SESSION , CT L SPINE Helical SmartFlux 80mm : EN: 031, PN: 27.1 CT L SPINE Helical SmartFlux 80m"
+        }
+      ]
+    },
+    {
+      "n": 10,
+      "ok": true,
+      "status": 200,
+      "client_ms": 255.5,
+      "es_took_ms": 110,
+      "total": {
+        "value": 60,
+        "relation": "eq"
+      },
+      "returned": 3,
+      "params": {
+        "query": "detector LPP honeycomb module failure",
+        "size": 3,
+        "sysid": "CTAPHP01",
+        "severity": "Critical"
+      },
+      "top": [
+        {
+          "_id": "8261b844fad048d89750",
+          "_score": 0.015873017,
+          "sysid": "CTAPHP01",
+          "hospital": "AP-HP Pitie-Salpetriere",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "9bacb71e93d64dac8cc9",
+          "_score": 0.015625,
+          "sysid": "CTAPHP01",
+          "hospital": "AP-HP Pitie-Salpetriere",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        },
+        {
+          "_id": "3b8c21e0185d4bcdabec",
+          "_score": 0.015384615,
+          "sysid": "CTAPHP01",
+          "hospital": "AP-HP Pitie-Salpetriere",
+          "severity": "Critical",
+          "message": "Host : Gantry Control Board    Ermes # : 600030005 Exception Class : Abort    Severity : Primary"
+        }
+      ]
+    }
+  ]
+}

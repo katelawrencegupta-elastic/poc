@@ -1,0 +1,74 @@
+{
+  "executions": [
+    {
+      "n": 1,
+      "id": "f14cd7bd-7bed-4fa0-896f-f6ff317dca3b",
+      "status": "completed",
+      "query": "gantry abort detector",
+      "error": null
+    },
+    {
+      "n": 2,
+      "id": "a9b6086a-73b4-432e-ac61-633a375d6df9",
+      "status": "completed",
+      "query": "collimation failure bad pixels",
+      "error": null
+    },
+    {
+      "n": 3,
+      "id": "1085544c-86e4-47ff-ba75-a3c3b85fd53a",
+      "status": "completed",
+      "query": "UPS battery power quality",
+      "error": null
+    },
+    {
+      "n": 4,
+      "id": "15871c48-3de8-49fd-b002-66427abb5bdb",
+      "status": "completed",
+      "query": "table elevation fault",
+      "error": null
+    },
+    {
+      "n": 5,
+      "id": "0b1dc92c-88a3-4900-9346-180e09afa037",
+      "status": "completed",
+      "query": "cardiac recon crash",
+      "error": null
+    },
+    {
+      "n": 6,
+      "id": "195dd2d1-37e4-4440-89b5-166420eb7e8c",
+      "status": "completed",
+      "query": "DICOM association error",
+      "error": null
+    },
+    {
+      "n": 7,
+      "id": "c49d6484-f1ce-4ffb-8938-469e64e241b5",
+      "status": "completed",
+      "query": "cooling over temperature HV tank",
+      "error": null
+    },
+    {
+      "n": 8,
+      "id": "8fb1f50b-c1b8-49f6-9eaf-81943eac9e3c",
+      "status": "completed",
+      "query": "scan abort hardware down",
+      "error": null
+    },
+    {
+      "n": 9,
+      "id": "46c7aa81-020a-42bb-9369-c10fcc12c6c3",
+      "status": "completed",
+      "query": "laser alignment scout FOV",
+      "error": null
+    },
+    {
+      "n": 10,
+      "id": "d4f4c935-2874-48bc-87e3-a373376a29e1",
+      "status": "completed",
+      "query": "detector LPP honeycomb module failure",
+      "error": null
+    }
+  ]
+}

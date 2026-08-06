@@ -147,14 +147,14 @@ python -m geh_synthetic hybrid-search-api --query "gantry abort" --severity Crit
 
 | Asset | Endpoint |
 |-------|----------|
-| Search Application (sync) | `POST https://klggehpoc-eb6d47.es.us-central1.gcp.elastic.cloud:443/_application/search_application/ct-hybrid-search-api/_search` |
-| Workflow run (async) | `POST https://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/api/workflows/workflow/ct-hybrid-search-api/run` |
+| Workflow run (creates executions) | `POST https://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/api/workflows/workflow/ct-hybrid-search-api/run` |
+| Search Application (sync only; no workflow executions) | `POST https://klggehpoc-eb6d47.es.us-central1.gcp.elastic.cloud:443/_application/search_application/ct-hybrid-search-api/_search` |
 
-Request body (Search Application):
+Workflow request body:
 
 ```json
 {
-  "params": {
+  "inputs": {
     "query": "gantry abort detector",
     "size": 10,
     "hospital": "",
@@ -165,6 +165,8 @@ Request body (Search Application):
   }
 }
 ```
+
+Search Application body uses the same fields under `"params"` instead of `"inputs"`.
 
 Hybrid ranking: BM25 (`multi_match`) + semantic (`indicator_message_semantic`) fused with RRF over `ct_sitedata_ext2_indicator_events_m-2026.07.01`.
 

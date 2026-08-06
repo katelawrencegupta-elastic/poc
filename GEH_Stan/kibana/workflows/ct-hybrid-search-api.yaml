@@ -2,10 +2,11 @@ version: "1"
 name: CT Hybrid Search API
 enabled: true
 description: >
-  REST/manual hybrid search over CT indicator events. Combines BM25 keyword
+  Manual/API hybrid search over CT indicator events. Combines BM25 keyword
   search with semantic search on indicator_message_semantic using RRF.
-  Prefer the Elasticsearch Search Application endpoint for sync results:
-  POST /_application/search_application/ct-hybrid-search-api/_search
+  Run via POST /api/workflows/workflow/ct-hybrid-search-api/run so executions
+  appear in the Workflows UI. (The ES Search Application path is sync-only and
+  does not create workflow executions.)
 triggers:
   - type: manual
     with:
@@ -45,6 +46,19 @@ triggers:
           default: 60
           description: RRF ranking constant
 steps:
+  # Coerce missing/empty inputs so Search Application mustache never emits
+  # invalid JSON like `"size": ,`.
+  - name: normalize_inputs
+    type: data.set
+    with:
+      query: "{%- if inputs.query and inputs.query != '' -%}{{ inputs.query | strip }}{%- else -%}detector{%- endif -%}"
+      size: "{%- if inputs.size and inputs.size != '' -%}{{ inputs.size }}{%- else -%}10{%- endif -%}"
+      hospital: "{%- if inputs.hospital and inputs.hospital != '' -%}{{ inputs.hospital | strip }}{%- endif -%}"
+      sysid: "{%- if inputs.sysid and inputs.sysid != '' -%}{{ inputs.sysid | strip }}{%- endif -%}"
+      severity: "{%- if inputs.severity and inputs.severity != '' -%}{{ inputs.severity | strip }}{%- endif -%}"
+      rank_window_size: "{%- if inputs.rank_window_size and inputs.rank_window_size != '' -%}{{ inputs.rank_window_size }}{%- else -%}100{%- endif -%}"
+      rank_constant: "{%- if inputs.rank_constant and inputs.rank_constant != '' -%}{{ inputs.rank_constant }}{%- else -%}60{%- endif -%}"
+
   - name: hybrid_search
     type: elasticsearch.request
     with:
@@ -52,13 +66,13 @@ steps:
       path: /_application/search_application/ct-hybrid-search-api/_search
       body:
         params:
-          query: "{{ inputs.query }}"
-          size: "{{ inputs.size }}"
-          hospital: "{{ inputs.hospital }}"
-          sysid: "{{ inputs.sysid }}"
-          severity: "{{ inputs.severity }}"
-          rank_window_size: "{{ inputs.rank_window_size }}"
-          rank_constant: "{{ inputs.rank_constant }}"
+          query: "{{ variables.query }}"
+          size: "{{ variables.size }}"
+          hospital: "{{ variables.hospital }}"
+          sysid: "{{ variables.sysid }}"
+          severity: "{{ variables.severity }}"
+          rank_window_size: "{{ variables.rank_window_size }}"
+          rank_constant: "{{ variables.rank_constant }}"
 
   - name: summarize_hits
     type: data.set
