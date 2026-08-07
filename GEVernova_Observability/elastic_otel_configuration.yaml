@@ -1,0 +1,31 @@
+
+#Elastic exporter configuration: enter your endpoints here along with the API key you have generated 
+
+exporters:
+  otlphttp/existing:
+    endpoint: https://your-current-backend.example.com
+
+  otlphttp/elastic:
+    endpoint: https://<your-motlp-endpoint>
+    headers:
+      Authorization: "ApiKey <your-api-key>"
+
+#Traces
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/existing, otlphttp/elastic]  # fan-out: both get everything
+
+#Metrics
+ service:
+  pipelines:
+    metrics/existing:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/existing]
+    metrics/elastic:
+      receivers: [otlp]
+      processors: [cumulativetodelta, batch]
+      exporters: [otlphttp/elastic]
