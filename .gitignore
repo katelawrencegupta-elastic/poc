@@ -1,0 +1,13 @@
+# macOS Finder metadata
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Splunk Observability Cloud inventory output (contains customer alert
+# logic, notification targets, and metric metadata)
+o11y_inventory/
+
+# Customer audit exports (internal dashboards, owner IDs, security tooling)
+GEVernova_Observability/DIMA/
