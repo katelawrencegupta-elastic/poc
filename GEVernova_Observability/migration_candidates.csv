@@ -1,0 +1,142 @@
+tier,map,dashboard,group,charts,alert_refs,detectors,last_updated
+A,AWS RDS (aws pkg),RDS Prod,SRE EKS - AWS Services USW,13,2101,102,2026-05-25
+A,Kubernetes,K8s container,Kubernetes,9,301,30,2026-06-29
+A,Kubernetes,USW_EKS_POD's,SRE_EKS_POD's,4,160,21,2025-04-03
+A,AWS ELB (aws pkg),ALB Prod,SRE EKS - AWS Services USW,7,86,42,2024-07-15
+A,AWS EC2/EBS (aws pkg),EC2 instances,AWS EC2,27,60,12,2026-08-05
+A,Kubernetes,ELASTIC SEARCH PROD ,SRE EKS - AWS Services USW,13,60,6,2025-09-15
+A,Kubernetes,K8s Pods,K8s Pods,2,50,5,2023-11-02
+A,Cassandra,Tables,Timeseries Keyspace,18,32,2,2026-08-10
+A,AWS ELB (aws pkg),ALB Prod EUC,SRE EKS - EUC AWS Services,7,16,8,2023-12-22
+A,AWS MSK/Kinesis (aws pkg),Timeseries MSK-US WEST,Timeseries Keyspace,23,8,1,2026-07-15
+A,AWS MSK/Kinesis (aws pkg),Timeseries MSK -EU,Timeseries Keyspace,23,8,1,2025-07-03
+A,AWS SQS (aws pkg),SQS Queue,AWS SQS,7,6,6,2025-11-06
+A,ZooKeeper,Predix-Timeseries-zookeeper-prod-EU,Predix-Timeseries-EU,24,3,2,2024-08-30
+A,HAProxy,Predix-Timeseries-Ha-proxy-prod-EU,Predix-Timeseries-EU,22,3,1,2023-06-16
+A,ZooKeeper,Predix-Timeseries-Zookeeper-Prod,Predix-Timeseries-US-West,20,3,1,2024-09-03
+A,Kafka,Predix-Timeseries-Kafka-Prod,Predix-Timeseries-US-West,25,1,1,2024-09-30
+A,Kafka,Predix-Timeseries-Kafka-prod-EU,Predix-Timeseries-EU,24,1,1,2025-04-16
+A,HAProxy,Predix-timeseries-Ha-Proxy-Prod,Predix-Timeseries-US-West,20,1,1,2023-06-16
+A,Kubernetes,K8s control plane summary,Kubernetes,41,0,0,2026-06-29
+A,OTel Collector,OpenTelemetry Collector,OpenTelemetry Collector,36,0,0,2026-07-17
+A,AWS RDS (aws pkg),RDS Overview,Timeseries Keyspace,30,0,0,2026-07-16
+A,AWS RDS (aws pkg),RDS instances,AWS RDS,30,0,0,2026-05-22
+A,Kubernetes,Debug_EKS,Smart Factory Cloud,28,0,0,2026-07-10
+A,Kubernetes,Debug_EKS,Smart Factory Cloud,28,0,0,2026-07-01
+A,Kubernetes,Debug_EKS_new,Smart Factory Cloud,27,0,0,2026-07-01
+A,AWS RDS (aws pkg),RDS instance,AWS RDS,27,0,0,2026-05-22
+A,Kubernetes,K8s cluster services,Kubernetes,23,0,0,2026-06-29
+A,Elastic APM,Service,APM services,23,0,0,2026-06-30
+A,AWS EC2/EBS (aws pkg),EC2 Instances,Timeseries Keyspace,22,0,0,2026-08-10
+A,Kubernetes,SFC_Scheduler_EKS_Metrics,Smart Factory Cloud,22,0,0,2026-07-27
+A,Kubernetes,Cases EKS,cases,22,0,0,2026-06-11
+A,Kubernetes,Analysis EKS,Analysis,22,0,0,2026-03-24
+A,Kubernetes,EKS-SW_PROD1,Smart Factory Cloud,21,0,0,2026-08-05
+A,OTel Collector,Hosts (OTel),Host overview,21,0,0,2026-05-26
+A,Kubernetes,SFC_PROD_EKS_Clusters,Smart Factory Cloud,20,0,0,2026-07-31
+A,AWS RDS (aws pkg),Aurora instance,AWS RDS,19,0,0,2026-05-22
+A,AWS RDS (aws pkg),Aurora instances,AWS RDS,19,0,0,2026-05-22
+A,Amazon Redshift (aws pkg),AWS Redshift overview,AWS Redshift,19,0,0,2026-06-15
+A,System/Host,Host,Data Center Hosts,18,0,0,2026-05-26
+A,RabbitMQ,AWS RabbitMQ broker metrics,Splunk Professional Services,17,0,0,2026-08-07
+A,AWS EC2/EBS (aws pkg),EC2 instances (CloudWatch),AWS EC2,17,0,0,2026-08-05
+A,AWS ELB (aws pkg),TIMESERIES ALB LOGS - DEV,Timeseries Keyspace,17,0,0,2026-07-23
+A,Kubernetes,PROD USW EKS APM Timeseries Dashboard,APM Time Series,17,0,0,2026-06-16
+A,OTel Collector,Host (OTel),Host overview,17,0,0,2026-05-26
+A,System/Host,Hosts,Data Center Hosts,17,0,0,2026-05-26
+A,Elastic APM,Service endpoint,APM services,17,0,0,2026-06-30
+A,Kubernetes,EKS,Timeseries Keyspace,16,0,0,2026-07-23
+A,Kubernetes,K8s cluster,Kubernetes,16,0,0,2026-06-29
+A,Kubernetes,K8s nodes,Kubernetes,16,0,0,2026-06-29
+A,Kubernetes,K8s overview,Kubernetes,16,0,0,2026-06-29
+A,Kubernetes,Prod - Pods,APM-Classic Foundation Core,16,0,0,2026-03-27
+A,Kubernetes,PreProd - PODS,APM-Classic Foundation Core,16,0,0,2026-03-27
+A,Kubernetes,K8s statefulsets,Kubernetes - Workloads,15,0,0,2026-07-08
+A,Kubernetes,k8s replicasets,Kubernetes - Workloads,15,0,0,2026-07-08
+A,Kubernetes,K8s containers,Kubernetes,15,0,0,2026-06-29
+A,AWS EC2/EBS (aws pkg),EC2 - WinMQ,SRE EKS - AWS Services USW,15,0,0,2026-03-05
+A,AWS EC2/EBS (aws pkg),EC2 instance,AWS EC2,14,0,0,2026-08-05
+A,Kubernetes,K8s statefulset,Kubernetes - Workloads,14,0,0,2026-07-08
+A,System/Host,Global Host Overview,Host overview,14,0,0,2026-05-26
+A,Kubernetes,K8s Daemonsets,Kubernetes - Workloads,13,0,0,2026-07-08
+A,Kubernetes,K8s deployments,Kubernetes - Workloads,13,0,0,2026-07-08
+A,Kubernetes,K8s pods,Kubernetes,13,0,0,2026-06-29
+A,Kubernetes,K8s node,Kubernetes,13,0,0,2026-06-29
+A,Elastic Synthetics,SFC Prod Synthetics Uptime,Smart Factory Cloud,13,0,0,2026-07-22
+A,Amazon Redshift (aws pkg),AWS Redshift,AWS Redshift,13,0,0,2026-06-15
+A,Kubernetes,K8s jobs,Kubernetes - Workloads,12,0,0,2026-07-08
+A,Kubernetes,K8s Daemonset,Kubernetes - Workloads,12,0,0,2026-07-08
+A,Kubernetes,K8s pod,Kubernetes,12,0,0,2026-06-29
+A,Kubernetes,K8s job,Kubernetes - Workloads,11,0,0,2026-07-08
+A,Kubernetes,k8s replicaset,Kubernetes - Workloads,11,0,0,2026-07-08
+A,AWS RDS (aws pkg),RDS INSTANCE,AWS Service Usage Details,11,0,0,2026-06-11
+A,AWS RDS (aws pkg),RDS PREPROD,SRE_EKS_APM_M_Dashboard,11,0,0,2026-06-09
+A,AWS EC2/EBS (aws pkg),EC2 instance (CloudWatch),AWS EC2,10,0,0,2026-08-05
+A,AWS SQS (aws pkg),SQS QUEUE OVERVIEW,Timeseries Keyspace,10,0,0,2026-07-22
+A,Kubernetes,K8s cronjob,Kubernetes - Workloads,10,0,0,2026-07-08
+A,Kubernetes,K8s cronjobs,Kubernetes - Workloads,10,0,0,2026-07-08
+A,Kubernetes,K8s deployment,Kubernetes - Workloads,10,0,0,2026-07-08
+A,Kubernetes,K8s clusters,Kubernetes,10,0,0,2026-06-29
+A,AWS SQS (aws pkg),SQS Queues- New,Timeseries Keyspace,9,0,0,2026-07-23
+A,Kubernetes,PlantApps pods Consumption ,Smart Factory Cloud,9,0,0,2026-07-17
+A,AWS ELB (aws pkg),ELB Instance,AWS Service Usage Details,9,0,0,2026-07-08
+A,Kubernetes,K8s HPAs,Kubernetes,9,0,0,2026-06-29
+A,Kubernetes,K8s operations,Kubernetes,9,0,0,2026-06-29
+A,AWS API Gateway (aws pkg),Overview,AWS API Gateway,9,0,0,2026-06-10
+A,Kubernetes,K8s HPA,Kubernetes,8,0,0,2026-06-29
+A,Kubernetes,K8s workloads,Kubernetes,8,0,0,2026-06-29
+A,AWS API Gateway (aws pkg),API resource,AWS API Gateway,8,0,0,2026-06-10
+A,Cassandra,Account Metrics,Timeseries Keyspace,8,0,0,2026-05-18
+A,Kubernetes,K8s namespaces,Kubernetes,7,0,0,2026-06-29
+A,Kubernetes,K8s workload,Kubernetes,7,0,0,2026-06-29
+A,RabbitMQ,RabbitMQ_Metrics,Smart Factory Cloud,7,0,0,2026-06-13
+A,AWS RDS (aws pkg),Engine specifics,AWS RDS,7,0,0,2026-05-22
+A,Kubernetes,K8s namespace,Kubernetes,6,0,0,2026-06-29
+A,Kubernetes,K8s control plane logs,Kubernetes,6,0,0,2026-06-29
+A,Elastic APM,Transaction details,APM business transactions,6,0,0,2026-05-05
+A,Elastic APM,Transactions overview,APM business transactions,6,0,0,2026-05-05
+A,Cassandra,ECS OVERVIEW,Timeseries Keyspace,5,0,0,2026-07-23
+A,Kubernetes,K8s pod events,Kubernetes,4,0,0,2026-06-29
+A,Kubernetes,K8s node events,Kubernetes,4,0,0,2026-06-29
+A,AWS RDS (aws pkg),RDS MySQL and MariaDB logs,AWS RDS,4,0,0,2026-05-22
+A,Amazon Redshift (aws pkg),AWS Redshift logs,AWS Redshift,4,0,0,2026-06-15
+A,Kubernetes,K8s node logs,Kubernetes,3,0,0,2026-06-29
+A,AWS EC2/EBS (aws pkg),AWS EC2 logs,AWS EC2,2,0,0,2026-08-05
+A,Kubernetes,K8s HPA events,Kubernetes,2,0,0,2026-06-29
+A,Kubernetes,K8s workloads events,Kubernetes,2,0,0,2026-06-29
+A,AWS API Gateway (aws pkg),API Gateway logs,AWS API Gateway,2,0,0,2026-06-10
+A,Kubernetes,K8s pod logs,Kubernetes,1,0,0,2026-06-29
+A,Elastic APM,APM Connect Memory Usage,APM Connect Memory Usage,1,0,0,2026-04-30
+B,AmazonMQ — activemq pkg is self-managed only; CloudWatch generic,MQ Prod,SRE EKS - AWS Services USW,18,443,20,2026-03-29
+B,ElastiCache — no dedicated pkg; Redis pkg or CloudWatch generic,Cache Instance,AWS Service Usage Details,10,348,34,2025-03-18
+B,AmazonMQ — activemq pkg is self-managed only; CloudWatch generic,ACTIVEMQ MQ,SRE EKS - AWS Services USW,11,143,10,2025-11-18
+B,ElastiCache — no dedicated pkg; Redis pkg or CloudWatch generic,Cache Prod,SRE EKS - AWS Services USW,11,44,8,2025-07-18
+B,AmazonMQ — activemq pkg is self-managed only; CloudWatch generic,Amazon MQ for ActiveMQ,Splunk Professional Services,26,0,0,2026-06-15
+B,MWAA — airflow pkg is self-managed only; CloudWatch generic,Amazon MWAA overview,Amazon MWAA,18,0,0,2026-02-23
+B,AmazonMQ — activemq pkg is self-managed only; CloudWatch generic,MQ Instance,AWS Service Usage Details,16,0,0,2026-05-05
+B,MWAA — airflow pkg is self-managed only; CloudWatch generic,Amazon MWAA,Amazon MWAA,16,0,0,2026-02-23
+B,AmazonMQ — activemq pkg is self-managed only; CloudWatch generic,MQ PROD,SRE_EKS_APM_M_Dashboard,11,0,0,2026-04-13
+B,EFS — CloudWatch generic,EFS Usage,AWS Service Usage Analysis,7,0,0,2026-06-04
+B,MWAA — airflow pkg is self-managed only; CloudWatch generic,Amazon MWAA (Env metrics),Amazon MWAA,7,0,0,2026-02-23
+B,ECR — CloudWatch generic,ECR Usage,AWS Service Usage Analysis,6,0,0,2026-07-16
+C,"GE TMS app service — K8s layer covered, app metrics custom",CONFIG-SERVICE,TMS-EKS-SERVICES-PROD-USW,10,165,18,2025-07-22
+C,no Elastic equivalent — full custom rebuild,SFC Template,Smart Factory Cloud,84,0,0,2026-04-02
+C,no Elastic equivalent — full custom rebuild,Security Service Dashboard,Platform Security Services,75,0,0,2026-07-03
+C,no Elastic equivalent — full custom rebuild,Smart Factory Cloud,Smart Factory Cloud Resource Dashboard,50,0,0,2026-04-02
+C,no Elastic equivalent — full custom rebuild,"App & Services (prod, US West)",Analysis,22,0,0,2026-02-12
+C,no Elastic equivalent — full custom rebuild,Sonelgaz RTE Memory,SmartSignal,12,0,0,2026-03-16
+C,no Elastic equivalent — full custom rebuild,sm-stage-auto-u RTE Memory,SmartSignal,12,0,0,2026-02-17
+C,no Elastic equivalent — full custom rebuild,sce_prod RTE Memory,SmartSignal,12,0,0,2026-02-17
+C,no Elastic equivalent — full custom rebuild,Steg RTE Memory,SmartSignal,12,0,0,2026-02-17
+C,no Elastic equivalent — full custom rebuild,Alghanim (mewkuwait) RTE Memory,SmartSignal,12,0,0,2026-02-17
+C,no Elastic equivalent — full custom rebuild,TierraMojada RTE Memory,SmartSignal,12,0,0,2026-02-17
+C,no Elastic equivalent — full custom rebuild,Conoco-Phillips RTE Memory,SmartSignal,12,0,0,2026-02-17
+C,no Elastic equivalent — full custom rebuild,Azito RTE Memory,SmartSignal,12,0,0,2026-02-17
+C,no Elastic equivalent — full custom rebuild,Executive multi Tenant Heat Dashboard,Smart Factory Cloud,8,0,0,2026-07-15
+X,Splunk platform self-monitoring — do not migrate,License usage overview,Executive Level,11,0,0,2026-05-05
+X,Splunk platform self-monitoring — do not migrate,Token usage,Executive Level,11,0,0,2026-05-05
+X,Splunk platform self-monitoring — do not migrate,RUM,Executive Level,11,0,0,2026-05-05
+X,Splunk platform self-monitoring — do not migrate,APM / IMM,Executive Level,8,0,0,2026-05-05
+X,Splunk platform self-monitoring — do not migrate,Logs,Executive Level,7,0,0,2026-05-05
+X,Splunk platform self-monitoring — do not migrate,Synthetics overview,Executive Level,6,0,0,2026-05-05
+X,scratch — do not migrate,test,test,5,0,0,2026-07-13
