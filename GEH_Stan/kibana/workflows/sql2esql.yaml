@@ -1,0 +1,104 @@
+version: "1"
+name: SQL to ES|QL
+enabled: true
+description: >
+  API/manual endpoint that accepts SQL against
+  ct_sitedata_ext2_indicator_events_m-2026.07.01. Uses Elasticsearch
+  SQL Translate API (/_sql/translate) for the official Query DSL translation,
+  then derives equivalent ES|QL (SQL Translate does not emit ES|QL).
+  Run: POST /api/workflows/workflow/sql2esql/run
+consts:
+  target_index: ct_sitedata_ext2_indicator_events_m-2026.07.01
+  field_hints: |
+    Equality / GROUP BY / SORT dimensions must use .keyword where mapped as text+keyword:
+    sysid.keyword, hospital.keyword, customer.keyword, indicator_severity.keyword,
+    event_type.keyword, productName.keyword, systype.keyword, machine_type.keyword,
+    sw_version.keyword, ifr_event_name.keyword, ifr_event_protocol_name.keyword,
+    ifr_event_category.keyword, country.keyword, state.keyword, region.keyword, zone.keyword.
+    Dates: @timestamp, installDate, es_load_ts, batch_from_date, batch_to_date.
+    Text search fields (no .keyword for MATCH): indicator_message, event_data, ifr_event_data.
+    Severity values: Critical, Warning, Informational, N/A.
+    Do not reference semantic_* fields in ES|QL unless doing semantic query (out of scope).
+triggers:
+  - type: manual
+    with:
+      inputs:
+        - name: sql
+          type: string
+          required: true
+          description: SQL query (FROM should target the CT indicator index)
+        - name: fetch_size
+          type: number
+          required: false
+          default: 10
+          description: fetch_size passed to SQL Translate / SQL search
+        - name: execute_esql
+          type: boolean
+          required: false
+          default: false
+          description: If true, dry-run the generated ES|QL via _query
+steps:
+  - name: normalize_inputs
+    type: data.set
+    with:
+      sql: "{%- if inputs.sql and inputs.sql != '' -%}{{ inputs.sql | strip }}{%- else -%}SELECT sysid, indicator_severity FROM \"{{ consts.target_index }}\" LIMIT 10{%- endif -%}"
+      fetch_size: "{%- if inputs.fetch_size and inputs.fetch_size != '' -%}{{ inputs.fetch_size }}{%- else -%}10{%- endif -%}"
+      execute_esql: "{%- if inputs.execute_esql == true or inputs.execute_esql == 'true' -%}true{%- else -%}false{%- endif -%}"
+      target_index: "{{ consts.target_index }}"
+
+  - name: sql_translate
+    type: elasticsearch.request
+    with:
+      method: POST
+      path: /_sql/translate
+      body:
+        query: "{{ variables.sql }}"
+        fetch_size: "{{ variables.fetch_size }}"
+
+  - name: to_esql
+    type: ai.prompt
+    with:
+      systemPrompt: |
+        You convert Elasticsearch SQL into ES|QL for Elastic Serverless.
+        Output ONLY the ES|QL text. No markdown fences, no commentary.
+        Rules:
+        - Start with FROM {{ consts.target_index }}
+        - Use pipe syntax: FROM ... | WHERE ... | STATS ... BY ... | SORT ... | LIMIT ...
+        - String equality uses == and double quotes
+        - Prefer .keyword for categorical filters and GROUP BY
+        - Map COUNT(*) to COUNT(*), COUNT(DISTINCT x) to COUNT_DISTINCT(x.keyword) when x is text
+        - Map LIMIT n to | LIMIT n
+        - Map ORDER BY to | SORT
+        - Do not invent fields
+      prompt: |
+        Target index: {{ consts.target_index }}
+
+        Field guidance:
+        {{ consts.field_hints }}
+
+        Input SQL:
+        {{ variables.sql }}
+
+        SQL Translate API Query DSL (for intent reference; do NOT return DSL):
+        ${{ steps.sql_translate.output | json }}
+
+        Return equivalent ES|QL only.
+
+  - name: maybe_execute
+    type: if
+    condition: 'variables.execute_esql : "true"'
+    steps:
+      - name: execute_esql
+        type: elasticsearch.esql.query
+        with:
+          format: json
+          query: "{{ steps.to_esql.output.content }}"
+
+  - name: result
+    type: data.set
+    with:
+      target_index: "{{ consts.target_index }}"
+      input_sql: "{{ variables.sql }}"
+      sql_translate_dsl: "${{ steps.sql_translate.output | json }}"
+      esql: "{{ steps.to_esql.output.content }}"
+      note: "SQL Translate API returns Query DSL. ES|QL is derived in a second step."

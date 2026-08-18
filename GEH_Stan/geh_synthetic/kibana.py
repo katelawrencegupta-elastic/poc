@@ -24,6 +24,8 @@ DETAIL_DASHBOARD_ID = "geh-hospital-detail"
 PCD_COLLIMATION_WORKFLOW_ID = "pcd-collimation-fail-critical-summary"
 PCD_COLLIMATION_RULE_TAG = "geh:pcd-collimation-fail-critical"
 CT_HYBRID_SEARCH_WORKFLOW_ID = "ct-hybrid-search-api"
+SQL2ESQL_WORKFLOW_ID = "sql2esql"
+SQL2DQL_WORKFLOW_ID = "sql2dql"
 
 DASHBOARD_DEFINITIONS_DIR = (
     Path(__file__).resolve().parent.parent / "kibana" / "dashboards"
@@ -349,4 +351,42 @@ def deploy_ct_hybrid_search_workflow(
         "workflow_id": CT_HYBRID_SEARCH_WORKFLOW_ID,
         "workflow_url": workflow_url(cfg, CT_HYBRID_SEARCH_WORKFLOW_ID),
         "run_url": f"{cfg.url}/api/workflows/workflow/{CT_HYBRID_SEARCH_WORKFLOW_ID}/run",
+    }
+
+
+def deploy_sql2esql_workflow(
+    cfg: KibanaConfig,
+    *,
+    workflow_directory: Path | None = None,
+) -> dict[str, Any]:
+    """Upsert the SQL → DSL translate + ES|QL derivation workflow."""
+    workflow_yaml = load_workflow_yaml(
+        f"{SQL2ESQL_WORKFLOW_ID}.yaml",
+        directory=workflow_directory,
+    )
+    workflow = upsert_workflow(cfg, SQL2ESQL_WORKFLOW_ID, workflow_yaml)
+    return {
+        "workflow": workflow,
+        "workflow_id": SQL2ESQL_WORKFLOW_ID,
+        "workflow_url": workflow_url(cfg, SQL2ESQL_WORKFLOW_ID),
+        "run_url": f"{cfg.url}/api/workflows/workflow/{SQL2ESQL_WORKFLOW_ID}/run",
+    }
+
+
+def deploy_sql2dql_workflow(
+    cfg: KibanaConfig,
+    *,
+    workflow_directory: Path | None = None,
+) -> dict[str, Any]:
+    """Upsert the SQL → Query DSL translate workflow (no ES|QL)."""
+    workflow_yaml = load_workflow_yaml(
+        f"{SQL2DQL_WORKFLOW_ID}.yaml",
+        directory=workflow_directory,
+    )
+    workflow = upsert_workflow(cfg, SQL2DQL_WORKFLOW_ID, workflow_yaml)
+    return {
+        "workflow": workflow,
+        "workflow_id": SQL2DQL_WORKFLOW_ID,
+        "workflow_url": workflow_url(cfg, SQL2DQL_WORKFLOW_ID),
+        "run_url": f"{cfg.url}/api/workflows/workflow/{SQL2DQL_WORKFLOW_ID}/run",
     }

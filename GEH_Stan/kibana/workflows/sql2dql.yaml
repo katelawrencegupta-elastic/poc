@@ -1,0 +1,47 @@
+version: "1"
+name: SQL to Query DSL
+enabled: true
+description: >
+  API/manual endpoint that accepts SQL against
+  ct_sitedata_ext2_indicator_events_m-2026.07.01 and calls Elasticsearch
+  SQL Translate (/_sql/translate) to return Query DSL.
+  Run: POST /api/workflows/workflow/sql2dql/run
+consts:
+  target_index: ct_sitedata_ext2_indicator_events_m-2026.07.01
+triggers:
+  - type: manual
+    with:
+      inputs:
+        - name: sql
+          type: string
+          required: true
+          description: SQL query (FROM should target the CT indicator index)
+        - name: fetch_size
+          type: number
+          required: false
+          default: 10
+          description: fetch_size passed to SQL Translate
+steps:
+  - name: normalize_inputs
+    type: data.set
+    with:
+      sql: "{%- if inputs.sql and inputs.sql != '' -%}{{ inputs.sql | strip }}{%- else -%}SELECT sysid, indicator_severity FROM \"{{ consts.target_index }}\" LIMIT 10{%- endif -%}"
+      fetch_size: "{%- if inputs.fetch_size and inputs.fetch_size != '' -%}{{ inputs.fetch_size }}{%- else -%}10{%- endif -%}"
+      target_index: "{{ consts.target_index }}"
+
+  - name: sql_translate
+    type: elasticsearch.request
+    with:
+      method: POST
+      path: /_sql/translate
+      body:
+        query: "{{ variables.sql }}"
+        fetch_size: "{{ variables.fetch_size }}"
+
+  - name: result
+    type: data.set
+    with:
+      target_index: "{{ consts.target_index }}"
+      input_sql: "{{ variables.sql }}"
+      query_dsl: "${{ steps.sql_translate.output | json }}"
+      note: "SQL Translate API returns Elasticsearch Query DSL."

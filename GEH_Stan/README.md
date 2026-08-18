@@ -172,6 +172,55 @@ Hybrid ranking: BM25 (`multi_match`) + semantic (`indicator_message_semantic`) f
 
 Definitions: `kibana/search_applications/ct-hybrid-search-api.json`, `kibana/workflows/ct-hybrid-search-api.yaml`.
 
+## SQL → ES|QL workflow API
+
+Upsert the `sql2esql` workflow:
+
+```bash
+python -m geh_synthetic sql2esql
+```
+
+| Asset | Endpoint |
+|-------|----------|
+| Workflow run | `POST https://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/api/workflows/workflow/sql2esql/run` |
+
+```json
+{
+  "inputs": {
+    "sql": "SELECT sysid, COUNT(*) AS c FROM \"ct_sitedata_ext2_indicator_events_m-2026.07.01\" WHERE indicator_severity='Critical' GROUP BY sysid ORDER BY c DESC LIMIT 5",
+    "fetch_size": 10,
+    "execute_esql": false
+  }
+}
+```
+
+Note: Elasticsearch **SQL Translate** (`/_sql/translate`) returns **Query DSL**, not ES|QL. This workflow calls Translate for the official DSL mapping, then derives ES|QL for the CT indicator index in a second step. Set `execute_esql: true` to dry-run the generated ES|QL.
+
+Definition: `kibana/workflows/sql2esql.yaml`.
+
+## SQL → Query DSL workflow API
+
+Upsert the `sql2dql` workflow (SQL Translate only, no ES|QL):
+
+```bash
+python -m geh_synthetic sql2dql
+```
+
+| Asset | Endpoint |
+|-------|----------|
+| Workflow run | `POST https://klggehpoc-eb6d47.kb.us-central1.gcp.elastic.cloud/api/workflows/workflow/sql2dql/run` |
+
+```json
+{
+  "inputs": {
+    "sql": "SELECT sysid, COUNT(*) AS c FROM \"ct_sitedata_ext2_indicator_events_m-2026.07.01\" WHERE indicator_severity='Critical' GROUP BY sysid ORDER BY c DESC LIMIT 5",
+    "fetch_size": 10
+  }
+}
+```
+
+Definition: `kibana/workflows/sql2dql.yaml`.
+
 ## Elastic backups
 
 Timestamped exports of live Kibana workflows + Agent Builder agents/tools:

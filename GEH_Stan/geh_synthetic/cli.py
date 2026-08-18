@@ -36,11 +36,16 @@ from .kibana import (
     OVERVIEW_DASHBOARD_ID,
     PCD_COLLIMATION_WORKFLOW_ID,
     CT_HYBRID_SEARCH_WORKFLOW_ID,
+    SQL2ESQL_WORKFLOW_ID,
+    SQL2DQL_WORKFLOW_ID,
     KibanaConfig,
     dashboard_url,
     deploy_ct_hybrid_search_workflow,
     deploy_geh_dashboards,
     deploy_pcd_collimation_rule_and_workflow,
+    deploy_sql2dql_workflow,
+    deploy_sql2esql_workflow,
+    kibana_request,
 )
 from .envfile import load_dotenv
 from .honeycomb import (
@@ -751,6 +756,91 @@ def _cmd_hybrid_search_api(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_sql2esql(args: argparse.Namespace) -> int:
+    es = _elastic_config(args)
+    kbn = KibanaConfig.from_env(
+        url=args.kibana_url,
+        api_key=args.api_key,
+        username=args.user,
+        password=args.password,
+        verify_certs=False if args.insecure else None,
+        elastic=es,
+    )
+    wf = deploy_sql2esql_workflow(
+        kbn,
+        workflow_directory=Path(args.workflow_dir) if args.workflow_dir else None,
+    )
+    print(
+        f"workflow={wf['workflow_id']} enabled={wf['workflow'].get('enabled')} "
+        f"valid={wf['workflow'].get('valid')}\n"
+        f"  POST {wf['run_url']}",
+        file=sys.stderr,
+    )
+    payload = {
+        "workflow_id": wf["workflow_id"],
+        "run_url": wf["run_url"],
+        "workflow_valid": wf["workflow"].get("valid"),
+    }
+    if args.sql:
+        run = kibana_request(
+            kbn,
+            "POST",
+            f"/api/workflows/workflow/{SQL2ESQL_WORKFLOW_ID}/run",
+            {
+                "inputs": {
+                    "sql": args.sql,
+                    "fetch_size": args.fetch_size,
+                    "execute_esql": bool(args.execute_esql),
+                }
+            },
+        )
+        payload["workflowExecutionId"] = run.get("workflowExecutionId") or run.get("id")
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _cmd_sql2dql(args: argparse.Namespace) -> int:
+    es = _elastic_config(args)
+    kbn = KibanaConfig.from_env(
+        url=args.kibana_url,
+        api_key=args.api_key,
+        username=args.user,
+        password=args.password,
+        verify_certs=False if args.insecure else None,
+        elastic=es,
+    )
+    wf = deploy_sql2dql_workflow(
+        kbn,
+        workflow_directory=Path(args.workflow_dir) if args.workflow_dir else None,
+    )
+    print(
+        f"workflow={wf['workflow_id']} enabled={wf['workflow'].get('enabled')} "
+        f"valid={wf['workflow'].get('valid')}\n"
+        f"  POST {wf['run_url']}",
+        file=sys.stderr,
+    )
+    payload = {
+        "workflow_id": wf["workflow_id"],
+        "run_url": wf["run_url"],
+        "workflow_valid": wf["workflow"].get("valid"),
+    }
+    if args.sql:
+        run = kibana_request(
+            kbn,
+            "POST",
+            f"/api/workflows/workflow/{SQL2DQL_WORKFLOW_ID}/run",
+            {
+                "inputs": {
+                    "sql": args.sql,
+                    "fetch_size": args.fetch_size,
+                }
+            },
+        )
+        payload["workflowExecutionId"] = run.get("workflowExecutionId") or run.get("id")
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="geh_synthetic",
@@ -1135,6 +1225,63 @@ def build_parser() -> argparse.ArgumentParser:
     hybrid.add_argument("--rank-constant", type=int, default=60)
     _add_elastic_args(hybrid)
     hybrid.set_defaults(func=_cmd_hybrid_search_api, to_elastic=True)
+
+    sql2 = sub.add_parser(
+        "sql2esql",
+        help=(
+            "Upsert SQL→ES|QL workflow "
+            f"(`{SQL2ESQL_WORKFLOW_ID}`; /_sql/translate + ES|QL derivation)"
+        ),
+    )
+    sql2.add_argument(
+        "--kibana-url",
+        default=None,
+        help=f"Kibana URL (or KIBANA_URL; default: {DEFAULT_KIBANA_URL})",
+    )
+    sql2.add_argument(
+        "--workflow-dir",
+        default=None,
+        help="Directory containing workflow YAML definitions",
+    )
+    sql2.add_argument(
+        "--sql",
+        default=None,
+        help="Optional SQL to run through the workflow after deploy",
+    )
+    sql2.add_argument("--fetch-size", type=int, default=10)
+    sql2.add_argument(
+        "--execute-esql",
+        action="store_true",
+        help="Ask the workflow to dry-run generated ES|QL",
+    )
+    _add_elastic_args(sql2)
+    sql2.set_defaults(func=_cmd_sql2esql, to_elastic=True)
+
+    sql2d = sub.add_parser(
+        "sql2dql",
+        help=(
+            "Upsert SQL→Query DSL workflow "
+            f"(`{SQL2DQL_WORKFLOW_ID}`; /_sql/translate only, no ES|QL)"
+        ),
+    )
+    sql2d.add_argument(
+        "--kibana-url",
+        default=None,
+        help=f"Kibana URL (or KIBANA_URL; default: {DEFAULT_KIBANA_URL})",
+    )
+    sql2d.add_argument(
+        "--workflow-dir",
+        default=None,
+        help="Directory containing workflow YAML definitions",
+    )
+    sql2d.add_argument(
+        "--sql",
+        default=None,
+        help="Optional SQL to run through the workflow after deploy",
+    )
+    sql2d.add_argument("--fetch-size", type=int, default=10)
+    _add_elastic_args(sql2d)
+    sql2d.set_defaults(func=_cmd_sql2dql, to_elastic=True)
 
     return p
 
