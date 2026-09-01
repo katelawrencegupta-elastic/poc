@@ -22,7 +22,7 @@ inputs:
     outputs:
       - type: "elasticsearch"
         args:
-          elasticsearch_url: "https://my-observability-project-f2e495.es.us-west-2.aws.elastic.cloud:443"
+          elasticsearch_url: ""
           api_key: ""
           es_datastream_name: "logs-aws.waf-default"
           es_dead_letter_index: "esf-dead-letter-index"
