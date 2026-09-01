@@ -1,0 +1,96 @@
+# Elastic Serverless Forwarder (ESF) config.yaml
+# Upload to S3 and set ElasticServerlessForwarderS3ConfigFile / S3_CONFIG_FILE to:
+#   s3://<YOUR-CONFIG-BUCKET>/<THIS-FILE>
+#
+# S3 prefixes are enforced on the bucket notification (S3 -> SQS), not in this file.
+# Each input.id must be the SQS queue that receives those S3 event notifications.
+#
+# Replace %REGION%, %ACCOUNT%, and queue names before deploy.
+
+inputs:
+  # ---------------------------------------------------------------------------
+  # AWS WAF logs
+  # Bucket/prefix: shared with ELB (same S3 bucket + common parent prefix).
+  # Point this SQS notification filter at the WAF key path under that prefix, e.g.
+  #   s3://<SHARED-LOG-BUCKET>/AWSLogs/%ACCOUNT%/WAFLogs/
+  # ---------------------------------------------------------------------------
+  - type: "s3-sqs"
+    id: "arn:aws:sqs:%REGION%:%ACCOUNT%:esf-waf-s3-notifications"
+    tags:
+      - "aws"
+      - "waf"
+    outputs:
+      - type: "elasticsearch"
+        args:
+          elasticsearch_url: "https://my-observability-project-f2e495.es.us-west-2.aws.elastic.cloud:443"
+          api_key: "VmtUeldLQUJwNlMyMWhjZlZDb3c6a0w2SG5PckRpRk1hNW5QeHpUM3Vadw=="
+          es_datastream_name: "logs-aws.waf-default"
+          es_dead_letter_index: "esf-dead-letter-index"
+          batch_max_actions: 500
+          batch_max_bytes: 10485760
+
+  # ---------------------------------------------------------------------------
+  # AWS ELB access logs (ALB / NLB / CLB)
+  # Bucket/prefix: shared with WAF (same S3 bucket + common parent prefix).
+  # Point this SQS notification filter at the ELB key path under that prefix, e.g.
+  #   s3://<SHARED-LOG-BUCKET>/AWSLogs/%ACCOUNT%/elasticloadbalancing/
+  # ---------------------------------------------------------------------------
+  - type: "s3-sqs"
+    id: "arn:aws:sqs:%REGION%:%ACCOUNT%:esf-elb-s3-notifications"
+    tags:
+      - "aws"
+      - "elb"
+    outputs:
+      - type: "elasticsearch"
+        args:
+          elasticsearch_url: "https://my-observability-project-f2e495.es.us-west-2.aws.elastic.cloud:443"
+          api_key: "VmtUeldLQUJwNlMyMWhjZlZDb3c6a0w2SG5PckRpRk1hNW5QeHpUM3Vadw=="
+          es_datastream_name: "logs-aws.elb_logs-default"
+          es_dead_letter_index: "esf-dead-letter-index"
+          batch_max_actions: 500
+          batch_max_bytes: 10485760
+
+  # ---------------------------------------------------------------------------
+  # Amazon ECS on Fargate logs (CloudWatch awslogs exported / delivered to S3)
+  # Separate bucket + prefix from WAF/ELB, e.g.
+  #   s3://<FARGATE-LOG-BUCKET>/<FARGATE-PREFIX>/
+  # ---------------------------------------------------------------------------
+  - type: "s3-sqs"
+    id: "arn:aws:sqs:%REGION%:%ACCOUNT%:esf-fargate-s3-notifications"
+    tags:
+      - "aws"
+      - "fargate"
+      - "ecs"
+    outputs:
+      - type: "elasticsearch"
+        args:
+          elasticsearch_url: "https://my-observability-project-f2e495.es.us-west-2.aws.elastic.cloud:443"
+          api_key: "VmtUeldLQUJwNlMyMWhjZlZDb3c6a0w2SG5PckRpRk1hNW5QeHpUM3Vadw=="
+          es_datastream_name: "logs-aws.cloudwatch_logs-default"
+          es_dead_letter_index: "esf-dead-letter-index"
+          batch_max_actions: 500
+          batch_max_bytes: 10485760
+
+  # ---------------------------------------------------------------------------
+  # Amazon EKS cluster (control plane) logs
+  # Separate bucket + prefix from WAF/ELB and Fargate, e.g.
+  #   s3://<EKS-LOG-BUCKET>/<EKS-PREFIX>/
+  # Routed to kubernetes.audit_logs so the Kubernetes integration pipeline applies.
+  # If these objects are still CloudWatch-wrapped JSON, keep them on
+  # logs-aws.cloudwatch_logs-default instead and reroute audit events in an ingest pipeline.
+  # ---------------------------------------------------------------------------
+  - type: "s3-sqs"
+    id: "arn:aws:sqs:%REGION%:%ACCOUNT%:esf-eks-s3-notifications"
+    tags:
+      - "aws"
+      - "eks"
+      - "kubernetes"
+    outputs:
+      - type: "elasticsearch"
+        args:
+          elasticsearch_url: "https://my-observability-project-f2e495.es.us-west-2.aws.elastic.cloud:443"
+          api_key: "VmtUeldLQUJwNlMyMWhjZlZDb3c6a0w2SG5PckRpRk1hNW5QeHpUM3Vadw=="
+          es_datastream_name: "logs-kubernetes.audit_logs-default"
+          es_dead_letter_index: "esf-dead-letter-index"
+          batch_max_actions: 500
+          batch_max_bytes: 10485760
