@@ -1,0 +1,56 @@
+check,dataset,data_stream_type,input_type,input_enabled,stream_enabled,collecting,notes,policy_name,package,namespace,agentless
+awshealth,aws.awshealth,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+billing,aws.billing,metrics,aws/metrics,Enabled,Enabled,Yes,Cost Explorer 24h; account 041298796264,aws-1,aws@8.1.0,default,True
+cloudtrail,aws.cloudtrail,logs,aws-s3,Off,Off,No,,aws-1,aws@8.1.0,default,True
+cloudtrail,aws.cloudtrail,logs,aws-cloudwatch,Off,Off,No,,aws-1,aws@8.1.0,default,True
+cloudwatch,aws.cloudwatch_logs,logs,aws-cloudwatch,Off,Off,No,,aws-1,aws@8.1.0,default,True
+cloudwatch,aws.cloudwatch_metrics,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+config,aws.config,logs,cel,Off,Off,No,,aws-1,aws@8.1.0,default,True
+dynamodb,aws.dynamodb,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+ebs,aws.ebs,metrics,aws/metrics,Enabled,Enabled,Yes,,aws-1,aws@8.1.0,default,True
+ec2,aws.ec2_logs,logs,aws-s3,Off,Off,No,,aws-1,aws@8.1.0,default,True
+ec2,aws.ec2_logs,logs,aws-cloudwatch,Off,Off,No,,aws-1,aws@8.1.0,default,True
+ec2,aws.ec2_metrics,metrics,aws/metrics,Enabled,Enabled,Yes,Metrics only; EC2 log inputs off,aws-1,aws@8.1.0,default,True
+ecs,aws.ecs_metrics,metrics,aws/metrics,Enabled,Enabled,Yes,Enabled in policy; no metrics-aws.ecs_metrics-default data stream,aws-1,aws@8.1.0,default,True
+elb,aws.elb_logs,logs,aws-s3,Off,Off,No,"Logs in Elastic come from ESF, not this integration",aws-1,aws@8.1.0,default,True
+elb,aws.elb_logs,logs,aws-cloudwatch,Off,Off,No,"Logs in Elastic come from ESF, not this integration",aws-1,aws@8.1.0,default,True
+elb,aws.elb_metrics,metrics,aws/metrics,Enabled,Enabled,Yes,,aws-1,aws@8.1.0,default,True
+lambda,aws.lambda,metrics,aws/metrics,Enabled,Enabled,Yes,Metrics only; Lambda log input off,aws-1,aws@8.1.0,default,True
+lambda,aws.lambda_logs,logs,aws-cloudwatch,Off,Off,No,,aws-1,aws@8.1.0,default,True
+natgateway,aws.natgateway,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+firewall,aws.firewall_logs,logs,aws-s3,Off,Off,No,,aws-1,aws@8.1.0,default,True
+firewall,aws.firewall_logs,logs,aws-cloudwatch,Off,Off,No,,aws-1,aws@8.1.0,default,True
+firewall,aws.firewall_metrics,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+rds,aws.rds,metrics,aws/metrics,Enabled,Enabled,Yes,,aws-1,aws@8.1.0,default,True
+s3,aws.s3access,logs,aws-s3,Off,Off,No,,aws-1,aws@8.1.0,default,True
+s3,aws.s3_daily_storage,metrics,aws/metrics,Enabled,Enabled,Yes,,aws-1,aws@8.1.0,default,True
+s3,aws.s3_request,metrics,aws/metrics,Enabled,Enabled,Yes,,aws-1,aws@8.1.0,default,True
+s3_storage_lens,aws.s3_storage_lens,metrics,aws/metrics,Enabled,Enabled,Yes,,aws-1,aws@8.1.0,default,True
+sns,aws.sns,metrics,aws/metrics,Enabled,Enabled,Yes,Enabled; last data 2026-08-31,aws-1,aws@8.1.0,default,True
+sqs,aws.sqs,metrics,aws/metrics,Enabled,Enabled,Yes,,aws-1,aws@8.1.0,default,True
+transitgateway,aws.transitgateway,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+usage,aws.usage,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+vpcflow,aws.vpcflow,logs,aws-s3,Off,Off,No,,aws-1,aws@8.1.0,default,True
+vpcflow,aws.vpcflow,logs,aws-cloudwatch,Off,Off,No,,aws-1,aws@8.1.0,default,True
+vpn,aws.vpn,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+waf,aws.waf,logs,aws-s3,Off,Off,No,"Logs in Elastic come from ESF, not this integration",aws-1,aws@8.1.0,default,True
+waf,aws.waf,logs,aws-cloudwatch,Off,Off,No,"Logs in Elastic come from ESF, not this integration",aws-1,aws@8.1.0,default,True
+route53,aws.route53_public_logs,logs,aws-cloudwatch,Off,Off,No,,aws-1,aws@8.1.0,default,True
+route53,aws.route53_resolver_logs,logs,aws-cloudwatch,Off,Off,No,,aws-1,aws@8.1.0,default,True
+route53,aws.route53_resolver_logs,logs,aws-s3,Off,Off,No,,aws-1,aws@8.1.0,default,True
+cloudfront,aws.cloudfront_logs,logs,aws-s3,Off,Off,No,,aws-1,aws@8.1.0,default,True
+redshift,aws.redshift,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+kinesis,aws.kinesis,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+securityhub,aws.securityhub_findings,logs,httpjson,Off,Off,No,,aws-1,aws@8.1.0,default,True
+securityhub,aws.securityhub_findings_full_posture,logs,httpjson,Off,Off,No,,aws-1,aws@8.1.0,default,True
+securityhub,aws.securityhub_insights,logs,httpjson,Off,Off,No,,aws-1,aws@8.1.0,default,True
+inspector,aws.inspector,logs,httpjson,Off,Off,No,,aws-1,aws@8.1.0,default,True
+guardduty,aws.guardduty,logs,httpjson,Off,Off,No,,aws-1,aws@8.1.0,default,True
+guardduty,aws.guardduty,logs,aws-s3,Off,Off,No,,aws-1,aws@8.1.0,default,True
+apigateway,aws.apigateway_metrics,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+apigateway,aws.apigateway_logs,logs,aws-s3,Off,Off,No,,aws-1,aws@8.1.0,default,True
+apigateway,aws.apigateway_logs,logs,aws-cloudwatch,Off,Off,No,,aws-1,aws@8.1.0,default,True
+emr,aws.emr_metrics,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True
+emr,aws.emr_logs,logs,aws-s3,Off,Off,No,,aws-1,aws@8.1.0,default,True
+emr,aws.emr_logs,logs,aws-cloudwatch,Off,Off,No,,aws-1,aws@8.1.0,default,True
+kafka,aws.kafka_metrics,metrics,aws/metrics,Off,Off,No,,aws-1,aws@8.1.0,default,True

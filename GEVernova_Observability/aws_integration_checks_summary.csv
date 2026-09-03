@@ -1,0 +1,34 @@
+check,metrics,logs,overall,enabled_datasets,disabled_datasets
+awshealth,Off,n/a,Off,,aws.awshealth (aws/metrics)
+billing,Enabled,n/a,Enabled,aws.billing (aws/metrics),
+cloudtrail,n/a,Off,Off,,aws.cloudtrail (aws-s3); aws.cloudtrail (aws-cloudwatch)
+cloudwatch,Off,Off,Off,,aws.cloudwatch_logs (aws-cloudwatch); aws.cloudwatch_metrics (aws/metrics)
+config,n/a,Off,Off,,aws.config (cel)
+dynamodb,Off,n/a,Off,,aws.dynamodb (aws/metrics)
+ebs,Enabled,n/a,Enabled,aws.ebs (aws/metrics),
+ec2,Enabled,Off,"Partial (metrics on, logs off)",aws.ec2_metrics (aws/metrics),aws.ec2_logs (aws-s3); aws.ec2_logs (aws-cloudwatch)
+ecs,Enabled,n/a,Enabled,aws.ecs_metrics (aws/metrics),
+elb,Enabled,Off,"Partial (metrics on, logs off)",aws.elb_metrics (aws/metrics),aws.elb_logs (aws-s3); aws.elb_logs (aws-cloudwatch)
+lambda,Enabled,Off,"Partial (metrics on, logs off)",aws.lambda (aws/metrics),aws.lambda_logs (aws-cloudwatch)
+natgateway,Off,n/a,Off,,aws.natgateway (aws/metrics)
+firewall,Off,Off,Off,,aws.firewall_logs (aws-s3); aws.firewall_logs (aws-cloudwatch); aws.firewall_metrics (aws/metrics)
+rds,Enabled,n/a,Enabled,aws.rds (aws/metrics),
+s3,Enabled,Off,Enabled,aws.s3_daily_storage (aws/metrics); aws.s3_request (aws/metrics),aws.s3access (aws-s3)
+s3_storage_lens,Enabled,n/a,Enabled,aws.s3_storage_lens (aws/metrics),
+sns,Enabled,n/a,Enabled,aws.sns (aws/metrics),
+sqs,Enabled,n/a,Enabled,aws.sqs (aws/metrics),
+transitgateway,Off,n/a,Off,,aws.transitgateway (aws/metrics)
+usage,Off,n/a,Off,,aws.usage (aws/metrics)
+vpcflow,n/a,Off,Off,,aws.vpcflow (aws-s3); aws.vpcflow (aws-cloudwatch)
+vpn,Off,n/a,Off,,aws.vpn (aws/metrics)
+waf,n/a,Off,Off,,aws.waf (aws-s3); aws.waf (aws-cloudwatch)
+route53,n/a,Off,Off,,aws.route53_public_logs (aws-cloudwatch); aws.route53_resolver_logs (aws-cloudwatch); aws.route53_resolver_logs (aws-s3)
+cloudfront,n/a,Off,Off,,aws.cloudfront_logs (aws-s3)
+redshift,Off,n/a,Off,,aws.redshift (aws/metrics)
+kinesis,Off,n/a,Off,,aws.kinesis (aws/metrics)
+securityhub,n/a,Off,Off,,aws.securityhub_findings (httpjson); aws.securityhub_findings_full_posture (httpjson); aws.securityhub_insights (httpjson)
+inspector,n/a,Off,Off,,aws.inspector (httpjson)
+guardduty,n/a,Off,Off,,aws.guardduty (httpjson); aws.guardduty (aws-s3)
+apigateway,Off,Off,Off,,aws.apigateway_metrics (aws/metrics); aws.apigateway_logs (aws-s3); aws.apigateway_logs (aws-cloudwatch)
+emr,Off,Off,Off,,aws.emr_metrics (aws/metrics); aws.emr_logs (aws-s3); aws.emr_logs (aws-cloudwatch)
+kafka,Off,n/a,Off,,aws.kafka_metrics (aws/metrics)

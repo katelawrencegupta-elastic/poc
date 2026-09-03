@@ -1,0 +1,189 @@
+# OpenTelemetry Collector gateway for EKS Fargate.
+# Forwards OTLP from workloads and scrapes cluster-level kube state via the API.
+# Keep replicaCount: 1 while k8s_cluster is enabled to avoid duplicate metrics.
+command:
+  name: otelcol-contrib
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: 0.158.0
+mode: deployment
+replicaCount: 1
+resources:
+  limits:
+    cpu: 500m
+    memory: 2560Mi
+  requests:
+    cpu: 500m
+    memory: 2560Mi
+clusterRole:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources:
+        - events
+        - namespaces
+        - namespaces/status
+        - nodes
+        - nodes/spec
+        - pods
+        - pods/status
+        - replicationcontrollers
+        - replicationcontrollers/status
+        - resourcequotas
+        - services
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps"]
+      resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["batch"]
+      resources: ["jobs", "cronjobs"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["autoscaling"]
+      resources: ["horizontalpodautoscalers"]
+      verbs: ["get", "list", "watch"]
+extraEnvs:
+  - name: ELASTIC_API_KEY
+    valueFrom:
+      secretKeyRef:
+        key: ELASTIC_API_KEY
+        name: elastic-otel-api-key
+  - name: MOTLP_ENDPOINT
+    value: https://my-observability-project-f2e495.es.us-west-2.aws.elastic.cloud:443
+  - name: CLUSTER_NAME
+    value: unified-usw02-dev-ueks
+  - name: AWS_ACCOUNT_ID
+    value: "467351975392"
+  - name: AWS_REGION
+    value: us-west-2
+  - name: ENVIRONMENT
+    value: development
+config:
+  exporters:
+    debug:
+      verbosity: basic
+    otlp_http/elastic:
+      endpoint: ${env:MOTLP_ENDPOINT}
+      compression: gzip
+      headers:
+        Authorization: "ApiKey ${env:ELASTIC_API_KEY}"
+      sending_queue:
+        enabled: true
+        sizer: bytes
+        queue_size: 50000000
+        block_on_overflow: true
+        batch:
+          flush_timeout: 1s
+          min_size: 1000000
+          max_size: 4000000
+  extensions:
+    health_check: {}
+  processors:
+    batch:
+      send_batch_size: 1024
+      send_batch_max_size: 2048
+      timeout: 1s
+    cumulative_to_delta: {}
+    k8sattributes:
+      auth_type: serviceAccount
+      passthrough: false
+      extract:
+        metadata:
+          - k8s.namespace.name
+          - k8s.pod.name
+          - k8s.pod.uid
+          - k8s.deployment.name
+          - k8s.node.name
+          - k8s.container.name
+      pod_association:
+        - sources:
+            - from: resource_attribute
+              name: k8s.pod.ip
+        - sources:
+            - from: resource_attribute
+              name: k8s.pod.uid
+        - sources:
+            - from: connection
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 1800
+      spike_limit_mib: 360
+    resourcedetection:
+      detectors: [env, system]
+      timeout: 5s
+      override: false
+    resource/tags:
+      attributes:
+        - action: upsert
+          key: k8s.cluster.name
+          value: ${env:CLUSTER_NAME}
+        - action: upsert
+          key: cloud.account.id
+          value: ${env:AWS_ACCOUNT_ID}
+        - action: upsert
+          key: cloud.region
+          value: ${env:AWS_REGION}
+        - action: upsert
+          key: deployment.environment
+          value: ${env:ENVIRONMENT}
+  receivers:
+    hostmetrics:
+      collection_interval: 30s
+      scrapers:
+        cpu: {}
+        load: {}
+        memory: {}
+        disk: {}
+        filesystem: {}
+        network: {}
+        paging: {}
+        processes: {}
+    k8s_cluster:
+      auth_type: serviceAccount
+      collection_interval: 30s
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  service:
+    extensions:
+      - health_check
+    pipelines:
+      logs:
+        receivers:
+          - otlp
+        processors:
+          - memory_limiter
+          - k8sattributes
+          - resource/tags
+          - batch
+        exporters:
+          - otlp_http/elastic
+          - debug
+      metrics:
+        receivers:
+          - otlp
+          - k8s_cluster
+          - hostmetrics
+        processors:
+          - memory_limiter
+          - k8sattributes
+          - resourcedetection
+          - resource/tags
+          - cumulative_to_delta
+          - batch
+        exporters:
+          - otlp_http/elastic
+          - debug
+      traces:
+        receivers:
+          - otlp
+        processors:
+          - memory_limiter
+          - k8sattributes
+          - resource/tags
+          - batch
+        exporters:
+          - otlp_http/elastic
+          - debug
