@@ -1,0 +1,81 @@
+Three quick items:
+- The collector must run as a single replica (the node-scraper duplicates data if scaled)
+- Repeat these steps on each of the 3 clusters (pss-usw02-stage-ueks, smartsignal-usw02-stage-ueks, apm-stage)
+- Counter metrics appear from their second collection cycle (~2 min) — this is normal delta-conversion behavior, don't troubleshoot in the first two minutes
+
+Step 1 — Add RBAC permissions to the collector's ClusterRole.
+Find your existing role (kubectl get clusterrole | grep -i otel) and add these rules (the first block is the critical one — without it every kubelet scrape gets a 403):
+
+  - apiGroups: [""]
+    resources: ["nodes/stats", "nodes/proxy"]
+    verbs: ["get"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+
+Also confirm the role already has get/list/watch on pods, nodes, namespaces (it should — your k8s_cluster receiver works today).
+
+Step 2 — Update the collector config. Three additions to your existing config — keep everything you have (your resource/tags upserts, exporters, env vars) and add:
+
+##Under extensions:##
+
+  k8s_observer:
+    auth_type: serviceAccount
+    observe_nodes: true
+
+##Under receivers##
+
+  receiver_creator/kubelet:
+    watch_observers: [k8s_observer]
+    receivers:
+      kubeletstats:
+        rule: type == "k8s.node"
+        config:
+          auth_type: serviceAccount
+          endpoint: "`endpoint`:`kubelet_endpoint_port`"
+          insecure_skip_verify: true
+          collection_interval: 60s
+          metric_groups: [node, pod, container]
+
+##Under processors:##
+
+  k8sattributes:
+    auth_type: serviceAccount
+    extract:
+      metadata:
+        - k8s.namespace.name
+        - k8s.deployment.name
+        - k8s.statefulset.name
+        - k8s.node.name
+        - k8s.pod.name
+      labels:
+        - tag_name: app
+          key: app
+          from: pod
+
+##Under service: — add k8s_observer to extensions, add the new receiver to metrics, add k8sattributes to every pipeline:##
+
+service:
+  extensions: [health_check, k8s_observer]
+  pipelines:
+    metrics:
+      receivers: [otlp, k8s_cluster, receiver_creator/kubelet]
+      processors: [memory_limiter, k8sattributes, resource/tags, cumulativetodelta, batch]
+      exporters: [otlphttp/elastic]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, k8sattributes, resource/tags, batch]
+      exporters: [otlphttp/elastic]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, k8sattributes, resource/tags, batch]
+      exporters: [otlphttp/elastic]
+
+Step 3 — Apply and restart. Upgrade the helm release / apply the ConfigMap and let the pod restart. Confirm replicas is 1.
+
+Verify data in Elastic (~5 min after restart). In Discover, ES|QL mode:
+
+esql
+FROM metrics-*.otel-*
+| WHERE @timestamp > NOW() - 10 minutes AND k8s.pod.cpu.usage IS NOT NULL
+| STATS pods = COUNT_DISTINCT(k8s.pod.name), nodes = COUNT_DISTINCT(k8s.node.name)

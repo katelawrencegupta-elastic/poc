@@ -1,0 +1,192 @@
+clusterRole:
+  create: true
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - events
+    - namespaces
+    - namespaces/status
+    - nodes
+    - nodes/spec
+    - pods
+    - pods/status
+    - replicationcontrollers
+    - replicationcontrollers/status
+    - resourcequotas
+    - services
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - apps
+    resources:
+    - daemonsets
+    - deployments
+    - replicasets
+    - statefulsets
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - batch
+    resources:
+    - jobs
+    - cronjobs
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - autoscaling
+    resources:
+    - horizontalpodautoscalers
+    verbs:
+    - get
+    - list
+    - watch
+command:
+  name: otelcol-contrib
+config:
+  exporters:
+    debug:
+      verbosity: basic
+    otlp_http/elastic:
+      compression: gzip
+      endpoint: ${env:MOTLP_ENDPOINT}
+      headers:
+        Authorization: ApiKey ${env:ELASTIC_API_KEY}
+      sending_queue:
+        batch:
+          flush_timeout: 1s
+          max_size: 4000000
+          min_size: 1000000
+        block_on_overflow: true
+        enabled: true
+        queue_size: 50000000
+        sizer: bytes
+  extensions:
+    health_check: {}
+  processors:
+    batch:
+      send_batch_max_size: 2048
+      send_batch_size: 1024
+      timeout: 1s
+    cumulativetodelta: {}
+    k8sattributes:
+      auth_type: serviceAccount
+      extract:
+        metadata:
+        - k8s.namespace.name
+        - k8s.pod.name
+        - k8s.pod.uid
+        - k8s.deployment.name
+        - k8s.node.name
+        - k8s.container.name
+      passthrough: false
+      pod_association:
+      - sources:
+        - from: resource_attribute
+          name: k8s.pod.ip
+      - sources:
+        - from: resource_attribute
+          name: k8s.pod.uid
+      - sources:
+        - from: connection
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 1800
+      spike_limit_mib: 360
+    resource/tags:
+      attributes:
+      - action: upsert
+        key: k8s.cluster.name
+        value: ${env:CLUSTER_NAME}
+      - action: upsert
+        key: cloud.account.id
+        value: ${env:AWS_ACCOUNT_ID}
+      - action: upsert
+        key: cloud.region
+        value: ${env:AWS_REGION}
+      - action: upsert
+        key: deployment.environment
+        value: ${env:ENVIRONMENT}
+  receivers:
+    k8s_cluster:
+      auth_type: serviceAccount
+      collection_interval: 30s
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  service:
+    extensions:
+    - health_check
+    pipelines:
+      logs:
+        exporters:
+        - otlp_http/elastic
+        - debug
+        processors:
+        - memory_limiter
+        - k8sattributes
+        - resource/tags
+        - batch
+        receivers:
+        - otlp
+      metrics:
+        exporters:
+        - otlp_http/elastic
+        - debug
+        processors:
+        - memory_limiter
+        - k8sattributes
+        - resource/tags
+        - cumulativetodelta
+        - batch
+        receivers:
+        - otlp
+        - k8s_cluster
+      traces:
+        exporters:
+        - otlp_http/elastic
+        - debug
+        processors:
+        - memory_limiter
+        - k8sattributes
+        - resource/tags
+        - batch
+        receivers:
+        - otlp
+extraEnvs:
+- name: ELASTIC_API_KEY
+  valueFrom:
+    secretKeyRef:
+      key: ELASTIC_API_KEY
+      name: elastic-otel-api-key
+- name: MOTLP_ENDPOINT
+  value: https://my-observability-project-f2e495.ingest.us-west-2.aws.elastic.cloud
+- name: CLUSTER_NAME
+  value: apm-stage
+- name: AWS_ACCOUNT_ID
+  value: "985408759551"
+- name: AWS_REGION
+  value: us-west-2
+- name: ENVIRONMENT
+  value: stage
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: 0.158.0
+mode: deployment
+replicaCount: 1
+resources:
+  limits:
+    cpu: 500m
+    memory: 1792Mi
+  requests:
+    cpu: 500m
+    memory: 1792Mi
