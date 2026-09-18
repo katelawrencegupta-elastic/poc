@@ -1,0 +1,18 @@
+FROM metrics-kubeletstatsreceiver.otel-default
+| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend
+| WHERE `metrics.k8s.container.memory_limit_utilization` >= 0.95
+| WHERE `resource.attributes.k8s.container.name` != "datadog-agent-injected"
+| WHERE `resource.attributes.k8s.deployment.name` IS NOT NULL
+| STATS max_util = MAX(`metrics.k8s.container.memory_limit_utilization`),
+        samples = COUNT(*)
+    BY `resource.attributes.k8s.cluster.name`,
+       `resource.attributes.k8s.namespace.name`,
+       `resource.attributes.k8s.deployment.name`,
+       `resource.attributes.k8s.container.name`
+| WHERE max_util >= 0.95 AND samples >= 5
+| KEEP `resource.attributes.k8s.cluster.name`,
+       `resource.attributes.k8s.namespace.name`,
+       `resource.attributes.k8s.deployment.name`,
+       `resource.attributes.k8s.container.name`,
+       max_util,
+       samples

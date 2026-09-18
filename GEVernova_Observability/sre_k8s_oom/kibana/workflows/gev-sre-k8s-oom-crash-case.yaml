@@ -1,0 +1,596 @@
+version: "1"
+name: SRE K8s OOM crash — case, RCA, HITL
+enabled: true
+description: >
+  Alert or manual path for multi-pod restart bursts and OOM signals. Creates or
+  updates an Observability case, gathers restart/memory/log evidence, classifies
+  RCA (oom.app / oom.likely / crash.not_oom), proposes remediations, and waits
+  for HITL. Never patches Deployment memory limits.
+triggers:
+  - type: alert
+  - type: manual
+    inputs:
+      # Optional so alert-triggered / alert-shaped runs are not rejected when
+      # inputs={} — extract reads kibana.alert.grouping (nested) first.
+      # Pure manual runs should still pass cluster/namespace/deployment.
+      - name: cluster
+        type: string
+        required: false
+        description: k8s.cluster.name (required for pure manual runs without an alert)
+      - name: namespace
+        type: string
+        required: false
+        description: k8s.namespace.name (required for pure manual runs without an alert)
+      - name: deployment
+        type: string
+        required: false
+        description: k8s.deployment.name (required for pure manual runs without an alert)
+      - name: container
+        type: string
+        required: false
+        description: k8s.container.name (optional)
+      - name: lookback
+        type: string
+        required: false
+        description: >
+          ES|QL duration for evidence queries (default "6 hours").
+          Example for historical replay: "3 days"
+      - name: lookback_logs
+        type: string
+        required: false
+        description: >
+          ES|QL duration for recent log sample (default "30 minutes").
+          Use the same value as lookback when replaying a past incident.
+settings:
+  timeout: 26h
+  concurrency:
+    # Custom-threshold stores groupBy as a nested object under kibana.alert.grouping
+    # (resource.attributes.k8s...), not as flat dotted keys. Flat bracket lookups
+    # produced "|||active" and serialized every alert behind one HITL wait.
+    key: "{{ event.alerts[0].kibana.alert.grouping.resource.attributes.k8s.cluster.name | default: inputs.cluster }}|{{ event.alerts[0].kibana.alert.grouping.resource.attributes.k8s.namespace.name | default: inputs.namespace }}|{{ event.alerts[0].kibana.alert.grouping.resource.attributes.k8s.deployment.name | default: inputs.deployment }}|{{ event.alerts[0].kibana.alert.status | default: 'manual' }}"
+    max: 1
+    strategy: queue
+steps:
+  - name: extract
+    type: data.set
+    with:
+      # Prefer nested grouping; fall back to kibana.alert.group[] then inputs.
+      cluster: "{%- assign g = event.alerts[0].kibana.alert.grouping -%}{%- assign v = g.resource.attributes.k8s.cluster.name -%}{%- if v == nil or v == '' -%}{%- assign v = g['resource.attributes.k8s.cluster.name'] -%}{%- endif -%}{%- if v == nil or v == '' -%}{%- for item in event.alerts[0].kibana.alert.group -%}{%- if item.field == 'resource.attributes.k8s.cluster.name' -%}{%- assign v = item.value -%}{%- endif -%}{%- endfor -%}{%- endif -%}{%- if v == nil or v == '' -%}{%- assign v = inputs.cluster -%}{%- endif -%}{%- if v == nil or v == '' -%}unknown{%- else -%}{{ v | strip }}{%- endif -%}"
+      namespace: "{%- assign g = event.alerts[0].kibana.alert.grouping -%}{%- assign v = g.resource.attributes.k8s.namespace.name -%}{%- if v == nil or v == '' -%}{%- assign v = g['resource.attributes.k8s.namespace.name'] -%}{%- endif -%}{%- if v == nil or v == '' -%}{%- for item in event.alerts[0].kibana.alert.group -%}{%- if item.field == 'resource.attributes.k8s.namespace.name' -%}{%- assign v = item.value -%}{%- endif -%}{%- endfor -%}{%- endif -%}{%- if v == nil or v == '' -%}{%- assign v = inputs.namespace -%}{%- endif -%}{%- if v == nil or v == '' -%}unknown{%- else -%}{{ v | strip }}{%- endif -%}"
+      deployment: "{%- assign g = event.alerts[0].kibana.alert.grouping -%}{%- assign v = g.resource.attributes.k8s.deployment.name -%}{%- if v == nil or v == '' -%}{%- assign v = g['resource.attributes.k8s.deployment.name'] -%}{%- endif -%}{%- if v == nil or v == '' -%}{%- for item in event.alerts[0].kibana.alert.group -%}{%- if item.field == 'resource.attributes.k8s.deployment.name' -%}{%- assign v = item.value -%}{%- endif -%}{%- endfor -%}{%- endif -%}{%- if v == nil or v == '' -%}{%- assign v = inputs.deployment -%}{%- endif -%}{%- if v == nil or v == '' -%}unknown{%- else -%}{{ v | strip }}{%- endif -%}"
+      container: "{%- assign g = event.alerts[0].kibana.alert.grouping -%}{%- assign v = g.resource.attributes.k8s.container.name -%}{%- if v == nil or v == '' -%}{%- assign v = g['resource.attributes.k8s.container.name'] -%}{%- endif -%}{%- if v == nil or v == '' -%}{%- for item in event.alerts[0].kibana.alert.group -%}{%- if item.field == 'resource.attributes.k8s.container.name' -%}{%- assign v = item.value -%}{%- endif -%}{%- endfor -%}{%- endif -%}{%- if v == nil or v == '' -%}{%- assign v = inputs.container -%}{%- endif -%}{%- if v == nil or v == '' -%}*{%- else -%}{{ v | strip }}{%- endif -%}"
+      alert_status: "{%- assign s = event.alerts[0].kibana.alert.status -%}{%- if s == nil or s == '' -%}active{%- else -%}{{ s | strip }}{%- endif -%}"
+      rule_name: "{%- assign n = event.rule.name -%}{%- if n == nil or n == '' -%}manual{%- else -%}{{ n | strip }}{%- endif -%}"
+      lookback: "{%- assign v = inputs.lookback -%}{%- if v == nil or v == '' -%}6 hours{%- else -%}{{ v | strip }}{%- endif -%}"
+      lookback_logs: "{%- assign v = inputs.lookback_logs -%}{%- if v == nil or v == '' -%}30 minutes{%- else -%}{{ v | strip }}{%- endif -%}"
+
+  - name: identity
+    type: data.set
+    with:
+      title: "[SRE] K8s crash — {{ steps.extract.output.cluster }} / {{ steps.extract.output.namespace }} / {{ steps.extract.output.deployment }}"
+      dedup_tag: "k8s-oom-{{ steps.extract.output.cluster }}-{{ steps.extract.output.namespace }}-{{ steps.extract.output.deployment }}"
+
+  - name: find_open
+    type: cases.findCases
+    with:
+      owner: observability
+      status:
+        - open
+        - in-progress
+      tags:
+        - "{{ steps.identity.output.dedup_tag }}"
+      category: kubernetes
+      sortField: updatedAt
+      sortOrder: desc
+      perPage: 5
+
+  - name: recovered_closeout
+    type: if
+    condition: 'event.alerts[0].kibana.alert.status : "recovered"'
+    steps:
+      - name: recovered_has_case
+        type: if
+        condition: "steps.find_open.output.total > 0"
+        steps:
+          - name: get_recovered_case
+            type: cases.getCase
+            with:
+              case_id: "{{ steps.find_open.output.cases[0].id }}"
+              include_comments: false
+          - name: recovered_approval
+            type: data.set
+            with:
+              approval_status: "{%- assign st = 'unknown' -%}{%- assign fields = steps.get_recovered_case.output.case.customFields -%}{%- if fields == nil -%}{%- assign fields = steps.get_recovered_case.output.customFields -%}{%- endif -%}{%- for f in fields -%}{%- if f.key == 'approval-status' -%}{%- assign st = f.value -%}{%- endif -%}{%- endfor -%}{{ st }}"
+          - name: recovered_comment
+            type: cases.addComment
+            with:
+              case_id: "{{ steps.find_open.output.cases[0].id }}"
+              comment: |
+                ## Recovered
+
+                Crash / OOM signal recovered for `{{ steps.extract.output.cluster }}` /
+                `{{ steps.extract.output.namespace }}` / `{{ steps.extract.output.deployment }}`.
+                Approval status: `{{ steps.recovered_approval.output.approval_status }}`.
+          - name: maybe_close
+            type: if
+            condition: 'not steps.recovered_approval.output.approval_status : "pending"'
+            steps:
+              - name: close_recovered
+                type: cases.closeCase
+                with:
+                  case_id: "{{ steps.find_open.output.cases[0].id }}"
+      - name: recovered_done
+        type: data.set
+        with:
+          done: "true"
+
+  - name: active_path
+    type: if
+    condition: 'not event.alerts[0].kibana.alert.status : "recovered"'
+    steps:
+      - name: upsert_case
+        type: if
+        condition: "steps.find_open.output.total > 0"
+        steps:
+          - name: update_existing
+            type: cases.updateCase
+            # Cases API errors when status is already in-progress ("All update fields
+            # are identical"). Continue so re-alerts still add reopen_note + evidence.
+            on-failure:
+              continue: true
+            with:
+              case_id: "{{ steps.find_open.output.cases[0].id }}"
+              updates:
+                status: in-progress
+          - name: existing_id
+            type: data.set
+            with:
+              case_id: "{{ steps.find_open.output.cases[0].id }}"
+          - name: reopen_note
+            type: cases.addComment
+            with:
+              case_id: "{{ steps.existing_id.output.case_id }}"
+              comment: |
+                ## Alert re-fired
+
+                Rule: `{{ steps.extract.output.rule_name }}`
+                Cluster / ns / deploy: `{{ steps.extract.output.cluster }}` /
+                `{{ steps.extract.output.namespace }}` /
+                `{{ steps.extract.output.deployment }}`
+                Container: `{{ steps.extract.output.container }}`
+                Reason: {{ event.alerts[0].kibana.alert.reason }}
+        else:
+          - name: create_case
+            type: cases.createCase
+            with:
+              title: "{{ steps.identity.output.title }}"
+              description: |
+                Anomalous multi-pod crash or OOM signal.
+
+                - Cluster: `{{ steps.extract.output.cluster }}`
+                - Namespace: `{{ steps.extract.output.namespace }}`
+                - Deployment: `{{ steps.extract.output.deployment }}`
+                - Container: `{{ steps.extract.output.container }}`
+                - Rule: `{{ steps.extract.output.rule_name }}`
+
+                Do not raise memory limits or roll the deployment until HITL approves.
+              tags:
+                - sre
+                - k8s
+                - oom
+                - "{{ steps.identity.output.dedup_tag }}"
+              category: kubernetes
+              severity: medium
+              owner: observability
+              customFields:
+                - key: account-id
+                  type: text
+                  value: "{{ steps.extract.output.cluster }}"
+                - key: region
+                  type: text
+                  value: "{{ steps.extract.output.namespace }}"
+                - key: domain-name
+                  type: text
+                  value: "{{ steps.extract.output.deployment }}"
+                - key: node-id
+                  type: text
+                  value: "{{ steps.extract.output.container }}"
+                - key: approval-status
+                  type: text
+                  value: pending
+          - name: new_id
+            type: data.set
+            with:
+              case_id: "{{ steps.create_case.output.case.id }}"
+
+      - name: resolve_id
+        type: data.set
+        with:
+          case_id: "{%- assign existing = steps.find_open.output.cases[0].id -%}{%- if existing and existing != '' -%}{{ existing }}{%- else -%}{{ steps.create_case.output.case.id }}{%- endif -%}"
+      - name: kickoff_comment
+        type: cases.addComment
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          comment: |
+            ## Investigation started
+
+            Workflow fired for **{{ steps.extract.output.rule_name }}**.
+
+            - Cluster: `{{ steps.extract.output.cluster }}`
+            - Namespace: `{{ steps.extract.output.namespace }}`
+            - Deployment: `{{ steps.extract.output.deployment }}`
+            - Container: `{{ steps.extract.output.container }}`
+            - Alert ID: `{{ event.alerts[0]._id }}`
+            - Reason: {{ event.alerts[0].kibana.alert.reason }}
+
+            Case: {{ kibanaUrl }}/s/sre/app/observability/cases/{{ steps.resolve_id.output.case_id }}
+
+      - name: evidence_restarts
+        type: elasticsearch.esql.query
+        on-failure:
+          continue: true
+        with:
+          format: json
+          query: |
+            FROM metrics-k8sclusterreceiver.otel-default
+            | WHERE @timestamp > NOW() - {{ steps.extract.output.lookback }}
+                AND `resource.attributes.k8s.cluster.name` == "{{ steps.extract.output.cluster }}"
+                AND `resource.attributes.k8s.namespace.name` == "{{ steps.extract.output.namespace }}"
+                AND `resource.attributes.k8s.deployment.name` == "{{ steps.extract.output.deployment }}"
+                AND `metrics.k8s.container.restarts` IS NOT NULL
+            | STATS max_r = MAX(`metrics.k8s.container.restarts`),
+                    min_r = MIN(`metrics.k8s.container.restarts`)
+                BY `resource.attributes.k8s.pod.name`,
+                   `resource.attributes.k8s.container.name`
+            | EVAL delta = max_r - min_r
+            | SORT delta DESC
+            | LIMIT 40
+
+      - name: evidence_memory
+        type: elasticsearch.esql.query
+        on-failure:
+          continue: true
+        with:
+          format: json
+          query: |
+            FROM metrics-kubeletstatsreceiver.otel-default
+            | WHERE @timestamp > NOW() - {{ steps.extract.output.lookback }}
+                AND `resource.attributes.k8s.cluster.name` == "{{ steps.extract.output.cluster }}"
+                AND `resource.attributes.k8s.namespace.name` == "{{ steps.extract.output.namespace }}"
+                AND `resource.attributes.k8s.deployment.name` == "{{ steps.extract.output.deployment }}"
+                AND `metrics.k8s.container.memory_limit_utilization` IS NOT NULL
+            | STATS max_util = MAX(`metrics.k8s.container.memory_limit_utilization`),
+                    p95_util = PERCENTILE(`metrics.k8s.container.memory_limit_utilization`, 95),
+                    samples = COUNT(*)
+                BY `resource.attributes.k8s.pod.name`,
+                   `resource.attributes.k8s.container.name`
+            | SORT max_util DESC
+            | LIMIT 40
+
+      - name: evidence_memory_trend
+        type: elasticsearch.esql.query
+        on-failure:
+          continue: true
+        with:
+          format: json
+          query: |
+            FROM metrics-kubeletstatsreceiver.otel-default
+            | WHERE @timestamp > NOW() - {{ steps.extract.output.lookback }}
+                AND `resource.attributes.k8s.cluster.name` == "{{ steps.extract.output.cluster }}"
+                AND `resource.attributes.k8s.namespace.name` == "{{ steps.extract.output.namespace }}"
+                AND `resource.attributes.k8s.deployment.name` == "{{ steps.extract.output.deployment }}"
+                AND `metrics.k8s.container.memory_limit_utilization` IS NOT NULL
+            | EVAL t = DATE_TRUNC(10 minutes, @timestamp)
+            | STATS avg_util = AVG(`metrics.k8s.container.memory_limit_utilization`),
+                    max_util = MAX(`metrics.k8s.container.memory_limit_utilization`)
+                BY t, `resource.attributes.k8s.container.name`
+            | SORT t ASC
+            | LIMIT 80
+
+      - name: evidence_oom_logs
+        type: elasticsearch.esql.query
+        on-failure:
+          continue: true
+        with:
+          format: json
+          query: |
+            FROM logs-kubernetes.container_logs.otel-default
+            | WHERE @timestamp > NOW() - {{ steps.extract.output.lookback }}
+                AND `resource.attributes.k8s.cluster.name` == "{{ steps.extract.output.cluster }}"
+                AND `resource.attributes.k8s.namespace.name` == "{{ steps.extract.output.namespace }}"
+                AND `resource.attributes.k8s.deployment.name` == "{{ steps.extract.output.deployment }}"
+                AND QSTR("body.text:\"Out of memory.\" OR body.text:\"Out of memory\" OR body.text:\"OutOfMemoryError\" OR body.text:OOMKilled OR body.text:\"OutOfMemoryException\"")
+            | STATS hits = COUNT(*)
+                BY `resource.attributes.k8s.pod.name`,
+                   `resource.attributes.k8s.container.name`
+            | SORT hits DESC
+            | LIMIT 20
+
+      - name: evidence_recent_logs
+        type: elasticsearch.esql.query
+        on-failure:
+          continue: true
+        with:
+          format: json
+          query: |
+            FROM logs-kubernetes.container_logs.otel-default
+            | WHERE @timestamp > NOW() - {{ steps.extract.output.lookback_logs }}
+                AND `resource.attributes.k8s.cluster.name` == "{{ steps.extract.output.cluster }}"
+                AND `resource.attributes.k8s.namespace.name` == "{{ steps.extract.output.namespace }}"
+                AND `resource.attributes.k8s.deployment.name` == "{{ steps.extract.output.deployment }}"
+            | KEEP @timestamp, body.text, `resource.attributes.k8s.pod.name`, `resource.attributes.k8s.container.name`
+            | SORT @timestamp DESC
+            | LIMIT 30
+
+      - name: classify
+        type: ai.classify
+        with:
+          includeRationale: true
+          fallbackCategory: crash.unknown
+          temperature: 0
+          categories:
+            - name: oom.app
+              description: Application logged Out of memory / OutOfMemoryError / OOMKilled phrase; restarts correlate with those logs.
+            - name: oom.likely
+              description: No OOM log phrase, but memory_limit_utilization near or at 1.0 around restart deltas. Likely kubelet OOMKill without app log.
+            - name: crash.not_oom
+              description: Multi-pod restart burst but memory utilization stays low (well under 50%). CrashLoop from another cause.
+            - name: crash.unknown
+              description: Evidence missing, Fargate null memory metrics, or signals conflict.
+          instructions: |
+            You are a Kubernetes SRE. Classify the crash for deployment
+            {{ steps.extract.output.deployment }} in
+            {{ steps.extract.output.cluster }}/{{ steps.extract.output.namespace }}.
+            Prefer oom.app if OOM log rows are non-empty.
+            Prefer oom.likely if max memory util >= 0.95 and restart deltas > 0.
+            Prefer crash.not_oom if restart deltas are high but max util < 0.5.
+            Use crash.unknown when memory rows are empty (common on Fargate) and
+            there are no OOM log hits.
+            Do not invent metric values.
+          input: |
+            RULE: {{ steps.extract.output.rule_name }}
+            ALERT_REASON: {{ event.alerts[0].kibana.alert.reason }}
+            CLUSTER: {{ steps.extract.output.cluster }}
+            NAMESPACE: {{ steps.extract.output.namespace }}
+            DEPLOYMENT: {{ steps.extract.output.deployment }}
+            CONTAINER: {{ steps.extract.output.container }}
+
+            RESTARTS_COLUMNS: ${{ steps.evidence_restarts.output.columns | json }}
+            RESTARTS_VALUES: ${{ steps.evidence_restarts.output.values | json }}
+
+            MEMORY_COLUMNS: ${{ steps.evidence_memory.output.columns | json }}
+            MEMORY_VALUES: ${{ steps.evidence_memory.output.values | json }}
+
+            MEMORY_TREND_COLUMNS: ${{ steps.evidence_memory_trend.output.columns | json }}
+            MEMORY_TREND_VALUES: ${{ steps.evidence_memory_trend.output.values | json }}
+
+            OOM_LOGS_COLUMNS: ${{ steps.evidence_oom_logs.output.columns | json }}
+            OOM_LOGS_VALUES: ${{ steps.evidence_oom_logs.output.values | json }}
+
+            RECENT_LOGS_COLUMNS: ${{ steps.evidence_recent_logs.output.columns | json }}
+            RECENT_LOGS_VALUES: ${{ steps.evidence_recent_logs.output.values | json }}
+
+      - name: map_rca
+        type: data.set
+        with:
+          fix_id: "{%- assign c = steps.classify.output.category -%}{%- if c == 'oom.app' -%}code_or_limit_bump{%- elsif c == 'oom.likely' -%}raise_memory_limits{%- elsif c == 'crash.not_oom' -%}crashloop_playbook{%- else -%}watch_gather_more{%- endif -%}"
+          severity: "{%- assign c = steps.classify.output.category -%}{%- if c == 'oom.app' or c == 'oom.likely' -%}high{%- elsif c == 'crash.not_oom' -%}medium{%- else -%}low{%- endif -%}"
+
+      - name: rca
+        type: ai.prompt
+        with:
+          temperature: 0
+          systemPrompt: |
+            You are a Kubernetes SRE writing a case comment. Use only the
+            evidence JSON and the already-chosen RCA class. Do not invent metrics.
+            If a values array is empty, say the query returned no rows.
+            recommended_fix_id must be exactly the provided recommended fix_id.
+            For raise_memory_limits, propose a concrete request/limit bump
+            (e.g. +50% or p99 working_set * 1.3) as text only — do not claim it was applied.
+            Include an illustrative resources.requests/limits YAML snippet in remediation_steps.
+            For code_or_limit_bump, call out likely runaway process or job from recent logs
+            and propose a concrete code/config/ticket fix (bound concurrency, fix leak, fix job).
+            Prefer both a temporary limit bump and a code ticket when leak_or_contention is
+            likely_leak or burst_runaway.
+
+            Resolution & Remediation requirements:
+            - remediation_steps must be actionable proposals (manifest change and/or code fix),
+              not just "investigate further", unless class is crash.unknown.
+            - Never claim the cluster was mutated.
+
+            Analysis & Insights requirements:
+            - memory_trend: narrate how util evolved (flat-then-spike, steady climb,
+              sawtooth, or no data). Cite max/p95 and timing if present.
+            - runaway_process: name the suspect job/thread/consumer from RECENT_LOGS
+              when supported; otherwise say unknown and what evidence is missing.
+            - leak_or_contention: one of likely_leak, burst_runaway, undersized_limit,
+              contention, not_memory_bound, unknown — with a one-sentence justification.
+          prompt: |
+            Write an RCA for a Kubernetes multi-pod crash / OOM investigation.
+
+            RCA class (already classified): {{ steps.classify.output.category }}
+            Classifier rationale: {{ steps.classify.output.rationale }}
+            Recommended fix_id (use this exact value): {{ steps.map_rca.output.fix_id }}
+            Severity to set: {{ steps.map_rca.output.severity }}
+
+            Cluster: {{ steps.extract.output.cluster }}
+            Namespace: {{ steps.extract.output.namespace }}
+            Deployment: {{ steps.extract.output.deployment }}
+            Container: {{ steps.extract.output.container }}
+            Alert reason: {{ event.alerts[0].kibana.alert.reason }}
+
+            RESTARTS: ${{ steps.evidence_restarts.output.values | json }}
+            MEMORY: ${{ steps.evidence_memory.output.values | json }}
+            MEMORY_TREND: ${{ steps.evidence_memory_trend.output.values | json }}
+            OOM_LOGS: ${{ steps.evidence_oom_logs.output.values | json }}
+            RECENT_LOGS: ${{ steps.evidence_recent_logs.output.values | json }}
+          schema:
+            type: object
+            properties:
+              summary:
+                type: string
+              likely_cause:
+                type: string
+              memory_trend:
+                type: string
+              runaway_process:
+                type: string
+              leak_or_contention:
+                type: string
+                description: >
+                  One of likely_leak, burst_runaway, undersized_limit,
+                  contention, not_memory_bound, unknown plus brief justification.
+              recommended_fix_id:
+                type: string
+              remediation_steps:
+                type: array
+                items:
+                  type: string
+              evidence_bullets:
+                type: array
+                items:
+                  type: string
+            required:
+              - summary
+              - likely_cause
+              - memory_trend
+              - runaway_process
+              - leak_or_contention
+              - recommended_fix_id
+              - remediation_steps
+
+      - name: set_severity
+        type: cases.setSeverity
+        # No-op when severity already matches (Cases: "All update fields are identical").
+        on-failure:
+          continue: true
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          severity: "{{ steps.map_rca.output.severity }}"
+
+      - name: set_rca_class
+        type: cases.setCustomField
+        on-failure:
+          continue: true
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          owner: observability
+          field_name: rca-class
+          value: "{{ steps.classify.output.category }}"
+
+      - name: set_proposed_fix
+        type: cases.setCustomField
+        on-failure:
+          continue: true
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          owner: observability
+          field_name: proposed-fix
+          value: "{{ steps.map_rca.output.fix_id }}"
+
+      - name: write_rca
+        type: cases.addComment
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          comment: |
+            ## RCA
+
+            - **Class:** `{{ steps.classify.output.category }}`
+            - **Recommended fix_id:** `{{ steps.map_rca.output.fix_id }}`
+            - **Severity:** {{ steps.map_rca.output.severity }}
+            - **Classifier rationale:** {{ steps.classify.output.rationale }}
+
+            **Summary:** {{ steps.rca.output.content.summary }}
+
+            **Likely cause:** {{ steps.rca.output.content.likely_cause }}
+
+            **Memory trend:** {{ steps.rca.output.content.memory_trend }}
+
+            **Runaway / suspect process:** {{ steps.rca.output.content.runaway_process }}
+
+            **Leak vs contention:** {{ steps.rca.output.content.leak_or_contention }}
+
+            **Evidence:**
+            {%- for b in steps.rca.output.content.evidence_bullets %}
+            - {{ b }}
+            {%- endfor %}
+
+            **Proposed remediation (not applied):**
+            {%- for s in steps.rca.output.content.remediation_steps %}
+            - {{ s }}
+            {%- endfor %}
+
+            Approve or reject in the workflow execution HITL form. Resume only from Kibana.
+            This workflow never patches Deployment memory limits.
+
+      - name: approve_fix
+        type: waitForInput
+        timeout: 24h
+        on-failure:
+          fallback:
+            - name: hitl_timeout_note
+              type: cases.addComment
+              with:
+                case_id: "{{ steps.resolve_id.output.case_id }}"
+                comment: |
+                  HITL timed out after 24h. `approval-status` remains pending. No remediation was applied.
+        with:
+          message: |
+            ## Approve remediation for `{{ steps.extract.output.deployment }}`?
+
+            **RCA class:** `{{ steps.classify.output.category }}`
+            **Recommended fix_id:** `{{ steps.map_rca.output.fix_id }}`
+            **Severity:** {{ steps.map_rca.output.severity }}
+
+            {{ steps.rca.output.content.summary }}
+
+            - Likely cause: {{ steps.rca.output.content.likely_cause }}
+            - Memory trend: {{ steps.rca.output.content.memory_trend }}
+            - Suspect process: {{ steps.rca.output.content.runaway_process }}
+            - Leak vs contention: {{ steps.rca.output.content.leak_or_contention }}
+
+            [Case]({{ kibanaUrl }}/s/sre/app/observability/cases/{{ steps.resolve_id.output.case_id }})
+
+            Choosing **approve_raise_memory_limits** records a GitOps memory
+            request/limit bump proposal; **approve_code_ticket** records a code/config
+            fix for the leak or runaway process. Both are recorded on the case only —
+            this workflow does not mutate the cluster.
+          schema:
+            type: object
+            properties:
+              decision:
+                type: string
+                enum:
+                  - approve_raise_memory_limits
+                  - approve_code_ticket
+                  - reject_false_positive
+                description: HITL decision
+              notes:
+                type: string
+                description: Optional notes for the case
+            required:
+              - decision
+
+      - name: set_approval_status
+        type: cases.setCustomField
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          owner: observability
+          field_name: approval-status
+          # waitForInput wraps the form under output.response (same as OS search-reject).
+          value: "{%- assign d = steps.approve_fix.output.response.decision -%}{%- if d == nil or d == '' -%}{%- assign d = steps.approve_form.output.decision -%}{%- endif -%}{{ d }}"
+
+      - name: after_approval
+        type: cases.addComment
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          comment: |
+            ## HITL decision
+
+            - **Decision:** `{%- assign d = steps.approve_fix.output.response.decision -%}{%- if d == nil or d == '' -%}{%- assign d = steps.approve_form.output.decision -%}{%- endif -%}{{ d }}`
+            - **Notes:** {%- assign n = steps.approve_form.output.response.notes -%}{%- if n == nil or n == '' -%}{%- assign n = steps.approve_form.output.notes -%}{%- endif -%}{{ n }}
+            - **Responded by:** {{ steps.approve_form.output.respondedBy }}
+            - **Recommended fix_id was:** `{{ steps.map_rca.output.fix_id }}`
+
+            No cluster mutation was performed by this workflow. Follow the owning
+            team's GitOps path to raise limits or open a code ticket.

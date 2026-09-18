@@ -1,0 +1,9 @@
+{
+  "id": "gev-finops-rightsize-run",
+  "type": "workflow",
+    "description": "Rightsizing investigation: case + rec + 14d CPU/RDS evidence + RCA + HITL. Writes in_progress (and HITL park/reject → hidden) onto the rightsizing queue. Optional input: arn. Never ModifyInstanceAttribute / StopInstances.",
+  "tags": ["finops", "rightsizing"],
+  "configuration": {
+    "workflow_id": "gev-finops-rightsize-case"
+  }
+}

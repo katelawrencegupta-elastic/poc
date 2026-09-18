@@ -1,0 +1,514 @@
+COMPUTED VALUES:
+additionalLabels: {}
+affinity: {}
+alternateConfig: {}
+annotations: {}
+apiVersion: apps/v1
+autoscaling:
+  additionalMetrics: []
+  behavior: {}
+  enabled: false
+  maxReplicas: 10
+  minReplicas: 1
+  targetCPUUtilizationPercentage: 80
+clusterRole:
+  annotations: {}
+  clusterRoleBinding:
+    annotations: {}
+    name: ""
+  create: true
+  name: ""
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - events
+    - namespaces
+    - namespaces/status
+    - nodes
+    - nodes/spec
+    - nodes/stats
+    - nodes/proxy
+    - pods
+    - pods/status
+    - replicationcontrollers
+    - replicationcontrollers/status
+    - resourcequotas
+    - services
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - apps
+    resources:
+    - daemonsets
+    - deployments
+    - replicasets
+    - statefulsets
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - batch
+    resources:
+    - jobs
+    - cronjobs
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - autoscaling
+    resources:
+    - horizontalpodautoscalers
+    verbs:
+    - get
+    - list
+    - watch
+command:
+  extraArgs: []
+  name: otelcol-contrib
+config:
+  exporters:
+    debug:
+      sampling_initial: 10000
+      sampling_thereafter: 1
+      verbosity: detailed
+    otlp_http/elastic:
+      compression: gzip
+      endpoint: ${env:MOTLP_ENDPOINT}
+      headers:
+        Authorization: ApiKey ${env:ELASTIC_API_KEY}
+      sending_queue:
+        batch:
+          flush_timeout: 1s
+          max_size: 4000000
+          min_size: 1000000
+        block_on_overflow: true
+        enabled: true
+        queue_size: 50000000
+        sizer: bytes
+  extensions:
+    health_check:
+      endpoint: ${env:MY_POD_IP}:13133
+    k8s_observer:
+      auth_type: serviceAccount
+      observe_nodes: true
+  processors:
+    batch:
+      send_batch_max_size: 2048
+      send_batch_size: 1024
+      timeout: 1s
+    cumulativetodelta: {}
+    k8sattributes:
+      auth_type: serviceAccount
+      extract:
+        labels:
+        - from: pod
+          key: app
+          tag_name: app
+        metadata:
+        - k8s.namespace.name
+        - k8s.pod.name
+        - k8s.pod.uid
+        - k8s.deployment.name
+        - k8s.statefulset.name
+        - k8s.node.name
+        - k8s.container.name
+      pod_association:
+      - sources:
+        - from: resource_attribute
+          name: k8s.pod.ip
+      - sources:
+        - from: resource_attribute
+          name: k8s.pod.uid
+      - sources:
+        - from: connection
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 1800
+      limit_percentage: 80
+      spike_limit_mib: 360
+      spike_limit_percentage: 25
+    resource/tags:
+      attributes:
+      - action: upsert
+        key: k8s.cluster.name
+        value: ${env:CLUSTER_NAME}
+      - action: upsert
+        key: cloud.account.id
+        value: ${env:AWS_ACCOUNT_ID}
+      - action: upsert
+        key: cloud.region
+        value: ${env:AWS_REGION}
+      - action: upsert
+        key: deployment.environment
+        value: ${env:ENVIRONMENT}
+  receivers:
+    jaeger:
+      protocols:
+        grpc:
+          endpoint: ${env:MY_POD_IP}:14250
+        thrift_compact:
+          endpoint: ${env:MY_POD_IP}:6831
+        thrift_http:
+          endpoint: ${env:MY_POD_IP}:14268
+    k8s_cluster:
+      auth_type: serviceAccount
+      collection_interval: 30s
+      # Required for OOMKilled / CrashLoopBackOff detection (off by default upstream).
+      metrics:
+        k8s.container.status.reason:
+          enabled: true
+        k8s.container.status.state:
+          enabled: true
+        k8s.pod.status_reason:
+          enabled: true
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    prometheus:
+      config:
+        scrape_configs:
+        - job_name: opentelemetry-collector
+          scrape_interval: 10s
+          static_configs:
+          - targets:
+            - ${env:MY_POD_IP}:8888
+    receiver_creator/kubelet:
+      receivers:
+        kubeletstats:
+          config:
+            auth_type: serviceAccount
+            collection_interval: 60s
+            endpoint: '`endpoint`:`kubelet_endpoint_port`'
+            insecure_skip_verify: true
+            metric_groups:
+            - node
+            - pod
+            - container
+            metrics:
+              k8s.container.cpu_limit_utilization:
+                enabled: true
+              k8s.container.memory_limit_utilization:
+                enabled: true
+              k8s.pod.cpu_limit_utilization:
+                enabled: true
+              k8s.pod.cpu_request_utilization:
+                enabled: true
+              k8s.pod.memory_limit_utilization:
+                enabled: true
+              k8s.pod.memory_request_utilization:
+                enabled: true
+          rule: type == "k8s.node"
+      watch_observers:
+      - k8s_observer
+    zipkin:
+      endpoint: ${env:MY_POD_IP}:9411
+  service:
+    extensions:
+    - health_check
+    - k8s_observer
+    pipelines:
+      logs:
+        exporters:
+        - otlp_http/elastic
+        - debug
+        processors:
+        - memory_limiter
+        - k8sattributes
+        - resource/tags
+        - batch
+        receivers:
+        - otlp
+      metrics:
+        exporters:
+        - otlp_http/elastic
+        - debug
+        processors:
+        - memory_limiter
+        - k8sattributes
+        - resource/tags
+        - cumulativetodelta
+        - batch
+        receivers:
+        - otlp
+        - k8s_cluster
+        - receiver_creator/kubelet
+      traces:
+        exporters:
+        - otlp_http/elastic
+        - debug
+        processors:
+        - memory_limiter
+        - k8sattributes
+        - resource/tags
+        - batch
+        receivers:
+        - otlp
+    telemetry:
+      metrics:
+        readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: ${env:MY_POD_IP}
+                port: 8888
+      resource:
+        host.name: ${env:OTEL_K8S_NODE_NAME}
+        k8s.namespace.name: ${env:OTEL_K8S_NAMESPACE}
+        k8s.node.ip: ${env:OTEL_K8S_NODE_IP}
+        k8s.node.name: ${env:OTEL_K8S_NODE_NAME}
+        k8s.pod.ip: ${env:OTEL_K8S_POD_IP}
+        k8s.pod.name: ${env:OTEL_K8S_POD_NAME}
+configMap:
+  create: true
+  existingName: ""
+dnsConfig: {}
+dnsPolicy: ""
+enableConfigChecksumAnnotation: true
+extraContainers: []
+extraEnvs:
+- name: ELASTIC_API_KEY
+  valueFrom:
+    secretKeyRef:
+      key: ELASTIC_API_KEY
+      name: elastic-otel-api-key
+- name: MOTLP_ENDPOINT
+  value: https://my-observability-project-f2e495.ingest.us-west-2.aws.elastic.cloud
+- name: CLUSTER_NAME
+  value: apm-stage
+- name: AWS_ACCOUNT_ID
+  value: "985408759551"
+- name: AWS_REGION
+  value: us-west-2
+- name: ENVIRONMENT
+  value: stage
+extraEnvsFrom: []
+extraManifests: []
+extraVolumeMounts: []
+extraVolumes: []
+fullnameOverride: ""
+hostAliases: []
+hostNetwork: false
+hostPID: false
+httproute:
+  annotations: {}
+  apiVersion: ""
+  enabled: false
+  hostnames: []
+  parentRefs: []
+  rules: []
+image:
+  digest: ""
+  pullPolicy: IfNotPresent
+  repository: otel/opentelemetry-collector-contrib
+  tag: 0.158.0
+imagePullSecrets: []
+ingress:
+  additionalIngresses: []
+  enabled: false
+initContainers: []
+internalTelemetryViaOTLP:
+  endpoint: ""
+  headers: []
+  logs:
+    enabled: false
+    endpoint: ""
+    headers: []
+  metrics:
+    enabled: false
+    endpoint: ""
+    headers: []
+  traces:
+    enabled: false
+    endpoint: ""
+    headers: []
+lifecycleHooks: {}
+livenessProbe:
+  httpGet:
+    path: /
+    port: 13133
+mode: deployment
+nameOverride: ""
+namespaceOverride: ""
+networkPolicy:
+  allowIngressFrom: []
+  annotations: {}
+  egressRules: []
+  enabled: false
+  extraIngressRules: []
+nodeSelector: {}
+podAnnotations: {}
+podDisruptionBudget:
+  enabled: false
+podLabels: {}
+podMonitor:
+  enabled: false
+  extraLabels: {}
+  metricsEndpoints:
+  - port: metrics
+podSecurityContext: {}
+ports:
+  jaeger-compact:
+    containerPort: 6831
+    enabled: true
+    hostPort: 6831
+    protocol: UDP
+    servicePort: 6831
+  jaeger-grpc:
+    containerPort: 14250
+    enabled: true
+    hostPort: 14250
+    protocol: TCP
+    servicePort: 14250
+  jaeger-thrift:
+    containerPort: 14268
+    enabled: true
+    hostPort: 14268
+    protocol: TCP
+    servicePort: 14268
+  metrics:
+    containerPort: 8888
+    enabled: false
+    protocol: TCP
+    servicePort: 8888
+  otlp:
+    appProtocol: grpc
+    containerPort: 4317
+    enabled: true
+    hostPort: 4317
+    protocol: TCP
+    servicePort: 4317
+  otlp-http:
+    containerPort: 4318
+    enabled: true
+    hostPort: 4318
+    protocol: TCP
+    servicePort: 4318
+  zipkin:
+    containerPort: 9411
+    enabled: true
+    hostPort: 9411
+    protocol: TCP
+    servicePort: 9411
+presets:
+  annotationDiscovery:
+    logs:
+      enabled: false
+    metrics:
+      enabled: false
+  clusterMetrics:
+    enabled: false
+  hostMetrics:
+    enabled: false
+  kubeletMetrics:
+    enabled: false
+  kubernetesAttributes:
+    enabled: false
+    extractAllPodAnnotations: false
+    extractAllPodLabels: false
+  kubernetesEvents:
+    enabled: false
+  kubernetesObjects:
+    apiExtensions:
+      enabled: true
+    autoscaling:
+      enabled: true
+      vpa:
+        enabled: false
+    core:
+      enabled: true
+    enabled: false
+    networking:
+      enabled: true
+    policy:
+      enabled: true
+    rbac:
+      enabled: true
+    storage:
+      enabled: true
+    watch: false
+  logsCollection:
+    enabled: false
+    includeCollectorLogs: false
+    maxRecombineLogSize: 102400
+    storeCheckpoints: false
+  profiling:
+    enabled: false
+  resourceDetection:
+    aks:
+      enabled: false
+    eks:
+      enabled: false
+    enabled: false
+    env:
+      enabled: true
+    gcp:
+      enabled: false
+    k8s_api:
+      enabled: true
+priorityClassName: ""
+prometheusRule:
+  defaultRules:
+    additionalRuleAnnotations: {}
+    additionalRuleLabels: {}
+    enabled: false
+  enabled: false
+  extraLabels: {}
+  groups: []
+readinessProbe:
+  httpGet:
+    path: /
+    port: 13133
+replicaCount: 1
+resizePolicy: []
+resources:
+  limits:
+    cpu: 500m
+    memory: 1792Mi
+  requests:
+    cpu: 500m
+    memory: 1792Mi
+revisionHistoryLimit: 10
+rewriteDeprecatedComponentNames: true
+rollout:
+  rollingUpdate: {}
+  strategy: RollingUpdate
+runtimeClassName: ""
+schedulerName: ""
+securityContext: {}
+service:
+  annotations: {}
+  type: ClusterIP
+serviceAccount:
+  annotations: {}
+  automountServiceAccountToken: true
+  create: true
+  name: ""
+serviceMonitor:
+  enabled: false
+  extraLabels: {}
+  metricRelabelings: []
+  metricsEndpoints:
+  - port: metrics
+  relabelings: []
+  sampleLimit: 0
+shareProcessNamespace: false
+startupProbe: {}
+statefulset:
+  persistentVolumeClaimRetentionPolicy:
+    enabled: false
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: Parallel
+  volumeClaimTemplates: []
+terminationGracePeriodSeconds: 30
+tolerations: []
+topologySpreadConstraints: []
+useGOMEMLIMIT: true

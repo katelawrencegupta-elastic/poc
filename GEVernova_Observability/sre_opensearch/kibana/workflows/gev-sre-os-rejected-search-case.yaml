@@ -1,0 +1,711 @@
+version: "1"
+name: SRE OpenSearch search rejected — case, RCA, HITL, apply
+enabled: true
+description: >
+  P3 for [SRE] OpenSearch search threadpool rejected. Alert path: case, RCA,
+  HITL, gated cancel_long_searches, verify. Recovered path: comment and close
+  the case unless approval-status is pending. Manual trigger (domain/node/
+  account/region) for Agent Builder rerun. Never calls AWS UpdateDomainConfig.
+triggers:
+  - type: alert
+  - type: manual
+    inputs:
+      - name: domain
+        type: string
+        required: true
+        description: AWS OpenSearch DomainName (aws.dimensions.DomainName)
+      - name: node
+        type: string
+        required: true
+        description: OpenSearch NodeId (aws.dimensions.NodeId)
+      - name: account
+        type: string
+        required: false
+        description: AWS account id (cloud.account.id)
+      - name: region
+        type: string
+        required: false
+        description: AWS region (cloud.region)
+settings:
+  timeout: 26h
+  concurrency:
+    key: "{{ event.alerts[0].kibana.alert.grouping['aws.dimensions.DomainName'] | default: inputs.domain }}|{{ event.alerts[0].kibana.alert.grouping['aws.dimensions.NodeId'] | default: inputs.node }}|{{ event.alerts[0].kibana.alert.status | default: 'manual' }}"
+    max: 1
+    strategy: queue
+steps:
+  - name: extract
+    type: data.set
+    with:
+      domain: "{%- assign g = event.alerts[0].kibana.alert.grouping -%}{%- assign d = g['aws.dimensions.DomainName'] -%}{%- if d == nil or d == '' -%}{%- assign d = event.alerts[0]['aws.dimensions.DomainName'] -%}{%- endif -%}{%- if d == nil or d == '' -%}{%- assign d = inputs.domain -%}{%- endif -%}{%- if d == nil or d == '' -%}unknown{%- else -%}{{ d | strip }}{%- endif -%}"
+      node: "{%- assign g = event.alerts[0].kibana.alert.grouping -%}{%- assign n = g['aws.dimensions.NodeId'] -%}{%- if n == nil or n == '' -%}{%- assign n = event.alerts[0]['aws.dimensions.NodeId'] -%}{%- endif -%}{%- if n == nil or n == '' -%}{%- assign n = inputs.node -%}{%- endif -%}{%- if n == nil or n == '' -%}unknown{%- else -%}{{ n | strip }}{%- endif -%}"
+      account: "{%- assign g = event.alerts[0].kibana.alert.grouping -%}{%- assign a = g['cloud.account.id'] -%}{%- if a == nil or a == '' -%}{%- assign a = event.alerts[0]['cloud.account.id'] -%}{%- endif -%}{%- if a == nil or a == '' -%}{%- assign a = inputs.account -%}{%- endif -%}{%- if a == nil or a == '' -%}unknown{%- else -%}{{ a | strip }}{%- endif -%}"
+      region: "{%- assign g = event.alerts[0].kibana.alert.grouping -%}{%- assign r = g['cloud.region'] -%}{%- if r == nil or r == '' -%}{%- assign r = event.alerts[0]['cloud.region'] -%}{%- endif -%}{%- if r == nil or r == '' -%}{%- assign r = inputs.region -%}{%- endif -%}{%- if r == nil or r == '' -%}unknown{%- else -%}{{ r | strip }}{%- endif -%}"
+      reject_count: "{%- assign v = event.alerts[0].kibana.alert.evaluation.value -%}{%- if v == nil or v == '' -%}n/a{%- else -%}{{ v }}{%- endif -%}"
+      alert_status: "{%- assign s = event.alerts[0].kibana.alert.status -%}{%- if s == nil or s == '' -%}active{%- else -%}{{ s | strip }}{%- endif -%}"
+
+  - name: identity
+    type: data.set
+    with:
+      title: "[SRE] Search rejected — {{ steps.extract.output.domain }} / {{ steps.extract.output.node }}"
+      dedup_tag: "os-reject-{{ steps.extract.output.account }}-{{ steps.extract.output.region }}-{{ steps.extract.output.domain }}-{{ steps.extract.output.node }}"
+      dash_url: "{{ kibanaUrl }}/s/sre/app/dashboards#/view/sre-opensearch-node?_g=(time:(from:now-1h,to:now))"
+
+  - name: find_open
+    type: cases.findCases
+    with:
+      owner: observability
+      status:
+        - open
+        - in-progress
+      tags:
+        - "{{ steps.identity.output.dedup_tag }}"
+      category: opensearch
+      sortField: updatedAt
+      sortOrder: desc
+      perPage: 5
+
+  - name: recovered_closeout
+    type: if
+    condition: 'event.alerts[0].kibana.alert.status : "recovered"'
+    steps:
+      - name: recovered_has_case
+        type: if
+        condition: "steps.find_open.output.total > 0"
+        steps:
+          - name: get_recovered_case
+            type: cases.getCase
+            with:
+              case_id: "{{ steps.find_open.output.cases[0].id }}"
+              include_comments: false
+          - name: recovered_approval
+            type: data.set
+            with:
+              approval_status: "{%- assign st = 'unknown' -%}{%- assign fields = steps.get_recovered_case.output.case.customFields -%}{%- if fields == nil -%}{%- assign fields = steps.get_recovered_case.output.customFields -%}{%- endif -%}{%- for f in fields -%}{%- if f.key == 'approval-status' -%}{%- assign st = f.value -%}{%- endif -%}{%- endfor -%}{{ st }}"
+          - name: recovered_comment
+            type: cases.addComment
+            with:
+              case_id: "{{ steps.find_open.output.cases[0].id }}"
+              comment: |
+                ## Recovered
+
+                Search-threadpool rejected recovered for `{{ steps.extract.output.domain }}` / `{{ steps.extract.output.node }}`.
+                Approval status: `{{ steps.recovered_approval.output.approval_status }}`.
+
+                If approval was still pending, the case stays open so HITL can finish.
+                Otherwise this run closes the case.
+          - name: maybe_close
+            type: if
+            condition: 'not steps.recovered_approval.output.approval_status : "pending"'
+            steps:
+              - name: close_recovered
+                type: cases.closeCase
+                with:
+                  case_id: "{{ steps.find_open.output.cases[0].id }}"
+
+  - name: active_incident
+    type: if
+    condition: 'not event.alerts[0].kibana.alert.status : "recovered"'
+    steps:
+      - name: upsert_case
+        type: if
+        condition: "steps.find_open.output.total > 0"
+        steps:
+          - name: update_existing
+            type: cases.updateCase
+            with:
+              case_id: "{{ steps.find_open.output.cases[0].id }}"
+              updates:
+                status: in-progress
+          - name: existing_id
+            type: data.set
+            with:
+              case_id: "{{ steps.find_open.output.cases[0].id }}"
+        else:
+          - name: create_case
+            type: cases.createCase
+            with:
+              title: "{{ steps.identity.output.title }}"
+              description: |
+                P2 OpenSearch **ThreadpoolSearchRejected > 0** over 15m.
+
+                - Domain: `{{ steps.extract.output.domain }}`
+                - Node: `{{ steps.extract.output.node }}`
+                - Account: `{{ steps.extract.output.account }}`
+                - Region: `{{ steps.extract.output.region }}`
+                - Last reject count: {{ steps.extract.output.reject_count }}
+
+                Alert: {{ event.alerts[0].kibana.alert.reason }}
+
+                Node dashboard: {{ steps.identity.output.dash_url }}
+
+                Workflow will add RCA and pause for HITL. Do not apply cluster or AWS changes until a human approves.
+              owner: observability
+              severity: medium
+              category: opensearch
+              tags:
+                - sre
+                - opensearch
+                - search-rejected
+                - "{{ steps.identity.output.dedup_tag }}"
+              customFields:
+                - key: domain-name
+                  type: text
+                  value: "{{ steps.extract.output.domain }}"
+                - key: node-id
+                  type: text
+                  value: "{{ steps.extract.output.node }}"
+                - key: account-id
+                  type: text
+                  value: "{{ steps.extract.output.account }}"
+                - key: region
+                  type: text
+                  value: "{{ steps.extract.output.region }}"
+                - key: last-reject-count
+                  type: text
+                  value: "{{ steps.extract.output.reject_count }}"
+                - key: approval-status
+                  type: text
+                  value: pending
+          - name: new_id
+            type: data.set
+            with:
+              case_id: "{{ steps.create_case.output.case.id }}"
+
+      - name: resolve_id
+        type: data.set
+        with:
+          case_id: "{%- assign existing = steps.find_open.output.cases[0].id -%}{%- if existing and existing != '' -%}{{ existing }}{%- else -%}{{ steps.create_case.output.case.id }}{%- endif -%}"
+
+      - name: attach
+        type: cases.addAttachments
+        on-failure:
+          continue: true
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          attachments:
+            - type: observability.alert
+              attachmentId: "{{ event.alerts[0]._id }}"
+              metadata:
+                index: "{{ event.alerts[0]._index }}"
+                rule:
+                  id: "{{ event.rule.id }}"
+                  name: "{{ event.rule.name }}"
+            - type: dashboard
+              attachmentId: sre-opensearch-node
+              metadata:
+                title: OpenSearch Node
+                soType: dashboard
+            - type: comment
+              data:
+                content: |
+                  Workflow fired for **{{ event.rule.name }}**.
+
+                  - Domain: `{{ steps.extract.output.domain }}`
+                  - Node: `{{ steps.extract.output.node }}`
+                  - Account: `{{ steps.extract.output.account }}`
+                  - Region: `{{ steps.extract.output.region }}`
+                  - Reject count: {{ steps.extract.output.reject_count }}
+                  - Alert ID: `{{ event.alerts[0]._id }}`
+                  - Reason: {{ event.alerts[0].kibana.alert.reason }}
+
+                  [OpenSearch Node dashboard]({{ steps.identity.output.dash_url }})
+
+                  Case: {{ kibanaUrl }}/s/sre/app/observability/cases/{{ steps.resolve_id.output.case_id }}
+
+      - name: attach_observables
+        type: cases.addObservables
+        on-failure:
+          continue: true
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          observables:
+            - typeKey: observable-type-domain
+              value: "{{ steps.extract.output.domain }}"
+              description: AWS OpenSearch DomainName
+
+      - name: evidence_node_1h
+        type: elasticsearch.esql.query
+        on-failure:
+          continue: true
+        with:
+          format: json
+          query: |
+            FROM metrics-aws.cloudwatch_metrics-*
+            | WHERE @timestamp > NOW() - 1 hours
+                AND aws.cloudwatch.namespace == "AWS/ES"
+                AND aws.dimensions.DomainName == "{{ steps.extract.output.domain }}"
+                AND aws.dimensions.NodeId == "{{ steps.extract.output.node }}"
+            | STATS
+                rej_1h = SUM(aws.es.metrics.ThreadpoolSearchRejected.sum),
+                wrej_1h = SUM(aws.es.metrics.ThreadpoolWriteRejected.sum),
+                cpu_max = MAX(aws.es.metrics.CPUUtilization.avg),
+                jvm_max = MAX(aws.es.metrics.JVMMemoryPressure.max),
+                srate_avg = AVG(aws.es.metrics.SearchRate.avg),
+                slat_avg = AVG(aws.es.metrics.SearchLatency.avg)
+
+      - name: evidence_node_24h
+        type: elasticsearch.esql.query
+        on-failure:
+          continue: true
+        with:
+          format: json
+          query: |
+            FROM metrics-aws.cloudwatch_metrics-*
+            | WHERE @timestamp > NOW() - 24 hours
+                AND aws.cloudwatch.namespace == "AWS/ES"
+                AND aws.dimensions.DomainName == "{{ steps.extract.output.domain }}"
+                AND aws.dimensions.NodeId == "{{ steps.extract.output.node }}"
+            | STATS
+                rej_24h = SUM(aws.es.metrics.ThreadpoolSearchRejected.sum),
+                wrej_24h = SUM(aws.es.metrics.ThreadpoolWriteRejected.sum),
+                cpu_max_24h = MAX(aws.es.metrics.CPUUtilization.avg),
+                jvm_max_24h = MAX(aws.es.metrics.JVMMemoryPressure.max),
+                srate_avg_24h = AVG(aws.es.metrics.SearchRate.avg),
+                slat_avg_24h = AVG(aws.es.metrics.SearchLatency.avg)
+
+      - name: evidence_baseline
+        type: elasticsearch.esql.query
+        on-failure:
+          continue: true
+        with:
+          format: json
+          query: |
+            FROM metrics-aws.cloudwatch_metrics-*
+            | WHERE @timestamp <= NOW() - 24 hours AND @timestamp > NOW() - 48 hours
+                AND aws.cloudwatch.namespace == "AWS/ES"
+                AND aws.dimensions.DomainName == "{{ steps.extract.output.domain }}"
+                AND aws.dimensions.NodeId == "{{ steps.extract.output.node }}"
+            | STATS
+                srate_prior = AVG(aws.es.metrics.SearchRate.avg),
+                slat_prior = AVG(aws.es.metrics.SearchLatency.avg),
+                cpu_prior = MAX(aws.es.metrics.CPUUtilization.avg)
+
+      - name: evidence_siblings
+        type: elasticsearch.esql.query
+        on-failure:
+          continue: true
+        with:
+          format: json
+          query: |
+            FROM metrics-aws.cloudwatch_metrics-*
+            | WHERE @timestamp > NOW() - 1 hours
+                AND aws.cloudwatch.namespace == "AWS/ES"
+                AND aws.dimensions.DomainName == "{{ steps.extract.output.domain }}"
+                AND aws.dimensions.NodeId IS NOT NULL
+            | STATS
+                rej = SUM(aws.es.metrics.ThreadpoolSearchRejected.sum),
+                cpu = MAX(aws.es.metrics.CPUUtilization.avg),
+                jvm = MAX(aws.es.metrics.JVMMemoryPressure.max)
+              BY aws.dimensions.NodeId
+            | SORT rej DESC
+            | LIMIT 20
+
+      - name: evidence_domain
+        type: elasticsearch.esql.query
+        on-failure:
+          continue: true
+        with:
+          format: json
+          query: |
+            FROM metrics-aws.cloudwatch_metrics-*
+            | WHERE @timestamp > NOW() - 1 hours
+                AND aws.cloudwatch.namespace == "AWS/ES"
+                AND aws.dimensions.DomainName == "{{ steps.extract.output.domain }}"
+                AND aws.dimensions.NodeId IS NULL
+            | STATS
+                yellow = MAX(aws.es.metrics.ClusterStatus_yellow.max),
+                green = MAX(aws.es.metrics.ClusterStatus_green.max),
+                used = MAX(aws.es.metrics.ClusterUsedSpace.max),
+                free = AVG(aws.es.metrics.FreeStorageSpace.avg),
+                blocked = MAX(aws.es.metrics.ClusterIndexWritesBlocked.max)
+            | EVAL pct = CASE(used + free > 0, used / (used + free) * 100, 0)
+
+      - name: classify
+        type: ai.classify
+        with:
+          includeRationale: true
+          fallbackCategory: unknown_needs_review
+          temperature: 0
+          categories:
+            - name: hot_node_imbalance
+              description: Rejects concentrated on one NodeId while sibling nodes on the same domain are near zero; CPU high on that node only.
+            - name: query_storm
+              description: SearchRate spiked versus the prior-day baseline, SearchLatency up, CPU high. Looks like a sudden expensive-query or client retry wave.
+            - name: jvm_gc_stall
+              description: JVMMemoryPressure high (about 85+) with search rejects and rising SearchLatency. Capacity may be fine except GC stall.
+            - name: capacity_exhausted
+              description: Sustained CPU above about 90 and search rejects on most nodes of the domain, not a single hot node.
+            - name: cluster_distress
+              description: Domain is yellow (green=0), writes blocked, or used-space percent above 85. Search rejects are a symptom of cluster health.
+            - name: unknown_needs_review
+              description: Evidence missing, conflicting, or too weak to pick another class.
+          instructions: |
+            You are an AWS OpenSearch SRE. Classify ThreadpoolSearchRejected for
+            domain {{ steps.extract.output.domain }} node {{ steps.extract.output.node }}.
+            Prefer cluster_distress if yellow or writes-blocked or used-space > 85.
+            Prefer hot_node_imbalance if siblings show rejects only on this NodeId.
+            Prefer query_storm if SearchRate is clearly up versus the 24-48h baseline.
+            Prefer jvm_gc_stall if JVM pressure is high and CPU is not saturated across nodes.
+            Prefer capacity_exhausted if CPU is high on most sibling nodes.
+            Use unknown_needs_review when rows are empty or signals conflict.
+            Do not invent metric values.
+          input: |
+            ALERT_REASON: {{ event.alerts[0].kibana.alert.reason }}
+            DOMAIN: {{ steps.extract.output.domain }}
+            NODE: {{ steps.extract.output.node }}
+            ACCOUNT: {{ steps.extract.output.account }}
+            REGION: {{ steps.extract.output.region }}
+            ALERT_REJECT_COUNT: {{ steps.extract.output.reject_count }}
+
+            NODE_1H_COLUMNS: ${{ steps.evidence_node_1h.output.columns | json }}
+            NODE_1H_VALUES: ${{ steps.evidence_node_1h.output.values | json }}
+
+            NODE_24H_COLUMNS: ${{ steps.evidence_node_24h.output.columns | json }}
+            NODE_24H_VALUES: ${{ steps.evidence_node_24h.output.values | json }}
+
+            BASELINE_24_48H_COLUMNS: ${{ steps.evidence_baseline.output.columns | json }}
+            BASELINE_24_48H_VALUES: ${{ steps.evidence_baseline.output.values | json }}
+
+            SIBLING_NODES_1H_COLUMNS: ${{ steps.evidence_siblings.output.columns | json }}
+            SIBLING_NODES_1H_VALUES: ${{ steps.evidence_siblings.output.values | json }}
+
+            DOMAIN_1H_COLUMNS: ${{ steps.evidence_domain.output.columns | json }}
+            DOMAIN_1H_VALUES: ${{ steps.evidence_domain.output.values | json }}
+
+      - name: map_rca
+        type: data.set
+        with:
+          fix_id: "{%- assign c = steps.classify.output.category -%}{%- if c == 'hot_node_imbalance' -%}watch_rebalance{%- elsif c == 'query_storm' -%}cancel_long_searches{%- elsif c == 'jvm_gc_stall' -%}watch_scale_or_reduce_heap_load{%- elsif c == 'capacity_exhausted' -%}scale_data_nodes{%- elsif c == 'cluster_distress' -%}page_storage_path{%- else -%}watch_only{%- endif -%}"
+          severity: "{%- assign c = steps.classify.output.category -%}{%- if c == 'cluster_distress' -%}critical{%- elsif c == 'capacity_exhausted' or c == 'query_storm' or c == 'jvm_gc_stall' -%}high{%- else -%}medium{%- endif -%}"
+
+      - name: rca
+        type: ai.prompt
+        with:
+          temperature: 0
+          systemPrompt: |
+            You are an AWS OpenSearch SRE writing a case comment. Use only the
+            evidence JSON and the already-chosen RCA class. Do not invent metrics.
+            If a values array is empty, say the query returned no rows.
+            recommended_fix_id must be exactly the provided recommended fix_id.
+          prompt: |
+            Write an RCA for OpenSearch search threadpool rejected.
+
+            RCA class (already classified): {{ steps.classify.output.category }}
+            Classifier rationale: {{ steps.classify.output.rationale }}
+            Recommended fix_id (use this exact value): {{ steps.map_rca.output.fix_id }}
+            Severity to set: {{ steps.map_rca.output.severity }}
+
+            Domain: {{ steps.extract.output.domain }}
+            Node: {{ steps.extract.output.node }}
+            Account: {{ steps.extract.output.account }}
+            Region: {{ steps.extract.output.region }}
+            Alert reason: {{ event.alerts[0].kibana.alert.reason }}
+
+            NODE_1H: ${{ steps.evidence_node_1h.output.values | json }}
+            NODE_24H: ${{ steps.evidence_node_24h.output.values | json }}
+            BASELINE_24_48H: ${{ steps.evidence_baseline.output.values | json }}
+            SIBLINGS_1H: ${{ steps.evidence_siblings.output.values | json }}
+            DOMAIN_1H: ${{ steps.evidence_domain.output.values | json }}
+          schema:
+            type: object
+            properties:
+              summary:
+                type: string
+              likely_cause:
+                type: string
+              blast_radius:
+                type: string
+              recommended_fix_id:
+                type: string
+              evidence_bullets:
+                type: array
+                items:
+                  type: string
+            required:
+              - summary
+              - likely_cause
+              - blast_radius
+              - recommended_fix_id
+
+      - name: set_severity
+        type: cases.setSeverity
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          severity: "{{ steps.map_rca.output.severity }}"
+
+      - name: set_rca_class
+        type: cases.setCustomField
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          owner: observability
+          field_name: rca-class
+          value: "{{ steps.classify.output.category }}"
+
+      - name: set_proposed_fix
+        type: cases.setCustomField
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          owner: observability
+          field_name: proposed-fix
+          value: "{{ steps.map_rca.output.fix_id }}"
+
+      - name: set_reject_count
+        type: cases.setCustomField
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          owner: observability
+          field_name: last-reject-count
+          value: "{{ steps.extract.output.reject_count }}"
+
+      - name: write_rca
+        type: cases.addComment
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          comment: |
+            ## RCA (P1)
+
+            - **Class:** `{{ steps.classify.output.category }}`
+            - **Recommended fix_id:** `{{ steps.map_rca.output.fix_id }}`
+            - **Severity:** {{ steps.map_rca.output.severity }}
+            - **Classifier rationale:** {{ steps.classify.output.rationale }}
+
+            **Summary:** {{ steps.rca.output.content.summary }}
+
+            **Likely cause:** {{ steps.rca.output.content.likely_cause }}
+
+            **Blast radius:** {{ steps.rca.output.content.blast_radius }}
+
+            **Evidence:**
+            {%- for b in steps.rca.output.content.evidence_bullets %}
+            - {{ b }}
+            {%- endfor %}
+
+            [OpenSearch Node dashboard]({{ steps.identity.output.dash_url }})
+
+            Approve or reject in the workflow execution HITL form. Resume only from Kibana. P2 applies `cancel_long_searches` only when this domain is opted in on `sre-os-domain-endpoints`.
+
+      - name: approve_fix
+        type: waitForInput
+        timeout: 24h
+        on-failure:
+          fallback:
+            - name: hitl_timeout_note
+              type: cases.addComment
+              with:
+                case_id: "{{ steps.resolve_id.output.case_id }}"
+                comment: |
+                  HITL timed out after 24h. `approval-status` remains pending. No fix was applied.
+        with:
+          message: |
+            ## Approve a fix for `{{ steps.extract.output.domain }}` / `{{ steps.extract.output.node }}`?
+
+            **RCA class:** `{{ steps.classify.output.category }}`
+            **Recommended fix_id:** `{{ steps.map_rca.output.fix_id }}`
+            **Severity:** {{ steps.map_rca.output.severity }}
+
+            {{ steps.rca.output.content.summary }}
+
+            - Reject count (alert): {{ steps.extract.output.reject_count }}
+            - Likely cause: {{ steps.rca.output.content.likely_cause }}
+            - Blast radius: {{ steps.rca.output.content.blast_radius }}
+            - Classifier: {{ steps.classify.output.rationale }}
+
+            [Node dashboard]({{ steps.identity.output.dash_url }})
+            [Case]({{ kibanaUrl }}/s/sre/app/observability/cases/{{ steps.resolve_id.output.case_id }})
+
+            Approving `cancel_long_searches` cancels in-flight `*search*` tasks on **this NodeId** only if the domain is opted in (`sre.os.apply_enabled` plus an HTTP connector on `sre-os-domain-endpoints`). Otherwise this is a dry-run. `scale_data_nodes` is never applied in P2.
+          schema:
+            type: object
+            properties:
+              approved:
+                type: boolean
+                title: Approve the selected fix
+              fix_id:
+                type: string
+                title: Fix ID
+                enum:
+                  - watch_only
+                  - watch_rebalance
+                  - cancel_long_searches
+                  - watch_scale_or_reduce_heap_load
+                  - scale_data_nodes
+                  - page_storage_path
+              notes:
+                type: string
+                title: Analyst notes
+            required:
+              - approved
+              - fix_id
+
+      - name: record_decision
+        type: cases.addComment
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          comment: |
+            ## HITL decision
+
+            - **Approved:** {{ steps.approve_fix.output.response.approved }}
+            - **fix_id:** `{{ steps.approve_fix.output.response.fix_id }}`
+            - **Notes:** {{ steps.approve_fix.output.response.notes }}
+            - **Responded by:** {{ steps.approve_fix.output.respondedBy }}
+
+            Next step is P2 apply dispatch. `scale_data_nodes` will not call AWS. `cancel_long_searches` runs only when the domain endpoint is opted in.
+
+      - name: set_approval_status
+        type: cases.setCustomField
+        with:
+          case_id: "{{ steps.resolve_id.output.case_id }}"
+          owner: observability
+          field_name: approval-status
+          value: "{%- if steps.approve_fix.output.response.approved == true or steps.approve_fix.output.response.approved == 'true' -%}approved{%- else -%}rejected{%- endif -%}"
+
+      - name: after_approval
+        type: if
+        condition: 'steps.approve_fix.output.response.approved : true'
+        steps:
+          - name: dispatch_fix
+            type: switch
+            expression: "{{ steps.approve_fix.output.response.fix_id }}"
+            cases:
+              - match: cancel_long_searches
+                steps:
+                  - name: lookup_endpoint
+                    type: elasticsearch.search
+                    on-failure:
+                      continue: true
+                    with:
+                      index: sre-os-domain-endpoints
+                      size: 1
+                      query:
+                        bool:
+                          filter:
+                            - term:
+                                aws.dimensions.DomainName: "{{ steps.extract.output.domain }}"
+                            - term:
+                                cloud.account.id: "{{ steps.extract.output.account }}"
+                            - term:
+                                cloud.region: "{{ steps.extract.output.region }}"
+                  - name: apply_flags
+                    type: data.set
+                    with:
+                      endpoint: "{%- assign hit = steps.lookup_endpoint.output.hits.hits[0]._source -%}{{ hit.sre.os.endpoint | strip }}"
+                      connector_id: "{%- assign hit = steps.lookup_endpoint.output.hits.hits[0]._source -%}{{ hit.sre.os.http_connector_id | strip }}"
+                      apply_enabled: "{%- assign hit = steps.lookup_endpoint.output.hits.hits[0]._source -%}{%- assign en = hit.sre.os.apply_enabled -%}{%- assign ep = hit.sre.os.endpoint -%}{%- assign cid = hit.sre.os.http_connector_id -%}{%- if en == true or en == 'true' -%}{%- if ep and ep != '' and cid and cid != '' -%}true{%- else -%}false{%- endif -%}{%- else -%}false{%- endif -%}"
+                  - name: maybe_cancel
+                    type: if
+                    condition: 'steps.apply_flags.output.apply_enabled : "true"'
+                    steps:
+                      - name: list_search_tasks
+                        type: http
+                        connector-id: "{{ steps.apply_flags.output.connector_id }}"
+                        on-failure:
+                          continue: true
+                        with:
+                          method: GET
+                          path: /_tasks
+                          query:
+                            detailed: "true"
+                            group_by: "none"
+                            actions: "*search*"
+                            nodes: "{{ steps.extract.output.node }}"
+                      - name: cancel_search_tasks
+                        type: http
+                        connector-id: "{{ steps.apply_flags.output.connector_id }}"
+                        on-failure:
+                          continue: true
+                        with:
+                          method: POST
+                          path: /_tasks/_cancel
+                          query:
+                            actions: "*search*"
+                            nodes: "{{ steps.extract.output.node }}"
+                      - name: comment_cancel_live
+                        type: cases.addComment
+                        with:
+                          case_id: "{{ steps.resolve_id.output.case_id }}"
+                          comment: |
+                            ## P2 apply: cancel_long_searches
+
+                            Cancelled in-flight `*search*` tasks on node `{{ steps.extract.output.node }}` via `{{ steps.apply_flags.output.endpoint }}` (HTTP connector `{{ steps.apply_flags.output.connector_id }}`).
+
+                            **GET /_tasks**
+                            ```
+                            ${{ steps.list_search_tasks.output | json }}
+                            ```
+
+                            **POST /_tasks/_cancel**
+                            ```
+                            ${{ steps.cancel_search_tasks.output | json }}
+                            ```
+                    else:
+                      - name: comment_cancel_dry_run
+                        type: cases.addComment
+                        with:
+                          case_id: "{{ steps.resolve_id.output.case_id }}"
+                          comment: |
+                            ## P2 dry-run: cancel_long_searches
+
+                            HITL approved cancel on `{{ steps.extract.output.domain }}` / `{{ steps.extract.output.node }}`, but apply is **not** opted in.
+
+                            Lookup index `sre-os-domain-endpoints` must have a doc for this domain+account+region with `sre.os.apply_enabled: true`, `sre.os.endpoint`, and `sre.os.http_connector_id` pointing at an HTTP connector whose base URL is the OpenSearch domain (IAM or FGAC stored on the connector). Until then no `_tasks` call is made.
+
+                            Intended calls (not sent):
+                            - `GET /_tasks?detailed=true&group_by=none&actions=*search*&nodes={{ steps.extract.output.node }}`
+                            - `POST /_tasks/_cancel?actions=*search*&nodes={{ steps.extract.output.node }}`
+
+                            Lookup hit: `${{ steps.lookup_endpoint.output.hits.hits | json }}`
+              - match: scale_data_nodes
+                steps:
+                  - name: comment_skip_scale
+                    type: cases.addComment
+                    with:
+                      case_id: "{{ steps.resolve_id.output.case_id }}"
+                      comment: |
+                        ## P2 skip: scale_data_nodes
+
+                        HITL selected `scale_data_nodes`. P2 does **not** call AWS `UpdateDomainConfig`. Recorded only. Ship scale behind a dry-run AWS connector in a later phase.
+            default:
+              - name: comment_skip_other
+                type: cases.addComment
+                with:
+                  case_id: "{{ steps.resolve_id.output.case_id }}"
+                  comment: |
+                    ## P2 skip: `{{ steps.approve_fix.output.response.fix_id }}`
+
+                    No mutate for this fix_id. watch_only / watch_rebalance / watch_scale_or_reduce_heap_load / page_storage_path stay observational.
+          - name: wait_verify
+            type: wait
+            with:
+              duration: 5m
+          - name: verify_node
+            type: elasticsearch.esql.query
+            on-failure:
+              continue: true
+            with:
+              format: json
+              query: |
+                FROM metrics-aws.cloudwatch_metrics-*
+                | WHERE @timestamp > NOW() - 5 minutes
+                    AND aws.cloudwatch.namespace == "AWS/ES"
+                    AND aws.dimensions.DomainName == "{{ steps.extract.output.domain }}"
+                    AND aws.dimensions.NodeId == "{{ steps.extract.output.node }}"
+                | STATS
+                    rej_5m = SUM(aws.es.metrics.ThreadpoolSearchRejected.sum),
+                    cpu_max = MAX(aws.es.metrics.CPUUtilization.avg),
+                    jvm_max = MAX(aws.es.metrics.JVMMemoryPressure.max),
+                    srate_avg = AVG(aws.es.metrics.SearchRate.avg)
+          - name: comment_verify
+            type: cases.addComment
+            with:
+              case_id: "{{ steps.resolve_id.output.case_id }}"
+              comment: |
+                ## P2 verify (last 5m CloudWatch AWS/ES)
+
+                After HITL (and apply or dry-run), this node:
+
+                Columns: `${{ steps.verify_node.output.columns | json }}`
+                Values: `${{ steps.verify_node.output.values | json }}`
+
+                Compare `rej_5m` to the alert window. CloudWatch grain is ~60s; zeros can mean no new rejects or delayed datapoints.
+
+                [Node dashboard]({{ steps.identity.output.dash_url }})

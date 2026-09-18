@@ -1,0 +1,15 @@
+{
+  "id": "gev-finops-low-cpu",
+  "type": "esql",
+  "description": "Lowest average CPU EC2 instances over the last N days from live CloudWatch. Waste evidence, not a Compute Optimizer rec. Use before proposing downsize or idle-stop.",
+  "tags": ["finops", "ge-vernova", "ec2"],
+  "configuration": {
+    "query": "FROM metrics-aws.ec2_metrics-*\n| WHERE @timestamp >= NOW() - TO_DATEPERIOD(CONCAT(TO_STRING(?days), \" days\"))\n| STATS cpu_avg = AVG(aws.ec2.metrics.CPUUtilization.avg),\n        cpu_p95 = PERCENTILE(aws.ec2.metrics.CPUUtilization.avg, 95)\n    BY cloud.instance.id, cloud.instance.name, cloud.machine.type, cloud.account.id\n| WHERE cpu_avg < 5\n| SORT cpu_avg ASC\n| LIMIT 15",
+    "params": {
+      "days": {
+        "type": "integer",
+        "description": "Lookback window in days (14 typical)"
+      }
+    }
+  }
+}

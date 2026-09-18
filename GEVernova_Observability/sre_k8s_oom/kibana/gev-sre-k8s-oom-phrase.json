@@ -1,0 +1,78 @@
+{
+  "name": "[SRE] K8s OOM phrase in container logs",
+  "tags": [
+    "sre",
+    "ge-vernova",
+    "k8s",
+    "oom"
+  ],
+  "consumer": "observability",
+  "rule_type_id": "observability.rules.custom_threshold",
+  "schedule": {
+    "interval": "5m"
+  },
+  "enabled": true,
+  "params": {
+    "criteria": [
+      {
+        "comparator": ">",
+        "metrics": [
+          {
+            "name": "A",
+            "aggType": "count"
+          }
+        ],
+        "threshold": [
+          0
+        ],
+        "timeSize": 15,
+        "timeUnit": "m"
+      }
+    ],
+    "alertOnNoData": false,
+    "alertOnGroupDisappear": false,
+    "groupBy": [
+      "resource.attributes.k8s.cluster.name",
+      "resource.attributes.k8s.namespace.name",
+      "resource.attributes.k8s.deployment.name",
+      "resource.attributes.k8s.container.name"
+    ],
+    "searchConfiguration": {
+      "index": "logs-*",
+      "query": {
+        "language": "kuery",
+        "query": "(body.text: \"Out of memory.\" or body.text: \"Out of memory\" or body.text: OutOfMemoryError or body.text: \"java.lang.OutOfMemoryError\" or body.text: OOMKilled or body.text: OutOfMemoryException) and resource.attributes.k8s.deployment.name: *"
+      }
+    }
+  },
+  "actions": [
+    {
+      "group": "custom_threshold.fired",
+      "id": "gev-sre-server-log",
+      "params": {
+        "message": "P1 OOM phrase in container logs (classic companion \u2192 workflow gev-sre-k8s-oom-crash-auto-code).",
+        "level": "info"
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "gev-sre-k8s-oom-crash-auto-code",
+          "summaryMode": false,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": true
+          }
+        }
+      }
+    }
+  ]
+}

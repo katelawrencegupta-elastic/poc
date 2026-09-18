@@ -1,0 +1,46 @@
+{
+  "kind": "alert",
+  "metadata": {
+    "name": "[SRE] AppHub \u2192 Meridium avg latency \u2265 500ms",
+    "description": "P2: destination avg response time \u2265 500 ms with \u226530 calls in the lookback (AppHub client \u2192 APM Classic / Meridium ingress).",
+    "tags": [
+      "sre",
+      "ge-vernova",
+      "apphub",
+      "meridium",
+      "latency"
+    ]
+  },
+  "time_field": "@timestamp",
+  "schedule": {
+    "every": "5m",
+    "lookback": "15m"
+  },
+  "recovery_strategy": "no_breach",
+  "no_data_strategy": "none",
+  "query": {
+    "format": "standalone",
+    "breach": {
+      "query": "FROM metrics-service_destination.1m.otel-default\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\n| WHERE TO_LOWER(`resource.attributes.service.name`) LIKE \"*apphub*\"\n| WHERE TO_LOWER(`attributes.span.destination.service.resource`) LIKE \"*classic*\"\n   OR TO_LOWER(`attributes.span.destination.service.resource`) LIKE \"*meridium*\"\n| STATS calls = SUM(`metrics.span.destination.service.response_time.count`),\n        sum_us = SUM(`metrics.span.destination.service.response_time.sum.us`)\n    BY `resource.attributes.service.name`,\n       `attributes.span.destination.service.resource`\n| EVAL avg_ms = ROUND(sum_us / calls / 1000.0, 2)\n| WHERE calls >= 30 AND avg_ms >= 500\n| KEEP `resource.attributes.service.name`,\n       `attributes.span.destination.service.resource`,\n       calls,\n       avg_ms"
+    }
+  },
+  "grouping": {
+    "fields": [
+      "resource.attributes.service.name",
+      "attributes.span.destination.service.resource"
+    ]
+  },
+  "state_transition": {
+    "pending_count": 1,
+    "recovering_count": 1
+  },
+  "artifacts": [
+    {
+      "id": "am-dash",
+      "type": "dashboard",
+      "data": {
+        "dashboard_id": "sre-apphub-meridium-latency"
+      }
+    }
+  ]
+}

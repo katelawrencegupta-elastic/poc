@@ -1,0 +1,17 @@
+{
+  "title": "Rightsizing: apm-dev-sample-web m5.2xlarge to m5.xlarge",
+  "description": "Action: downsize\nFinding: OVER_PROVISIONED\nCurrent: m5.2xlarge\nRecommended: m5.xlarge\nEstimated monthly savings: $186.40 USD\nAccount: 041298796264\nARN: arn:aws:ec2:us-west-2:041298796264:instance/i-0sampleopen01\n\nValidate CPU in metrics-aws.ec2_metrics before applying.",
+  "tags": ["rightsizing", "finops", "apm-dev"],
+  "owner": "observability",
+  "category": "rightsizing",
+  "severity": "medium",
+  "customFields": [
+    {"key": "resource-arn", "type": "text", "value": "arn:aws:ec2:us-west-2:041298796264:instance/i-0sampleopen01"},
+    {"key": "rightsizing-id", "type": "text", "value": "RXx30hTWMIov19QYeun1WafY7ik="},
+    {"key": "est-monthly-savings", "type": "text", "value": "186.40"},
+    {"key": "recommended-action", "type": "text", "value": "downsize"},
+    {"key": "infeasible", "type": "toggle", "value": false}
+  ],
+  "connector": {"id": "none", "name": "none", "type": ".none", "fields": null},
+  "settings": {"syncAlerts": false}
+}

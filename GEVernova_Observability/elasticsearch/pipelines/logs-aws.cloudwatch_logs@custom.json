@@ -1,0 +1,114 @@
+{
+  "description": "EKS CloudWatch: JSON-parse kube-apiserver-audit into kubernetes.audit and reroute to kubernetes.audit_logs; parse remaining control-plane streams; parse Container Insights /application envelopes.",
+  "processors": [
+    {
+      "grok": {
+        "ignore_failure": true,
+        "field": "aws.cloudwatch.log_group",
+        "patterns": [
+          "^/aws/eks/%{NOTSLASH:orchestrator.cluster.name}/cluster",
+          "arn:aws:logs:[^:]+:[^:]+:log-group:/aws/eks/%{NOTSLASH:orchestrator.cluster.name}/cluster"
+        ],
+        "ignore_missing": true,
+        "tag": "eks-cluster-from-log-group",
+        "pattern_definitions": {
+          "NOTSLASH": "[^/]+"
+        },
+        "if": "ctx.aws?.cloudwatch?.log_group instanceof String && ctx.aws.cloudwatch.log_group.contains('/aws/eks/') && ctx.orchestrator?.cluster?.name == null"
+      }
+    },
+    {
+      "json": {
+        "ignore_failure": true,
+        "tag": "eks-audit-json",
+        "field": "message",
+        "target_field": "kubernetes.audit",
+        "if": "ctx.data_stream?.dataset != 'kubernetes.audit_logs'\n&& ctx.aws?.cloudwatch?.log_group instanceof String\n&& ctx.aws.cloudwatch.log_group.contains('/aws/eks/')\n&& ctx.aws.cloudwatch.log_stream instanceof String\n&& ctx.aws.cloudwatch.log_stream.startsWith('kube-apiserver-audit') && ctx.message instanceof String"
+      }
+    },
+    {
+      "set": {
+        "ignore_failure": true,
+        "tag": "eks-audit-event-dataset",
+        "field": "event.dataset",
+        "value": "kubernetes.audit_logs",
+        "if": "ctx.data_stream?.dataset != 'kubernetes.audit_logs'\n&& ctx.aws?.cloudwatch?.log_group instanceof String\n&& ctx.aws.cloudwatch.log_group.contains('/aws/eks/')\n&& ctx.aws.cloudwatch.log_stream instanceof String\n&& ctx.aws.cloudwatch.log_stream.startsWith('kube-apiserver-audit')"
+      }
+    },
+    {
+      "reroute": {
+        "namespace": [
+          "default"
+        ],
+        "on_failure": [
+          {
+            "append": {
+              "field": "tags",
+              "allow_duplicates": false,
+              "value": "eks-audit-reroute-failed"
+            }
+          },
+          {
+            "set": {
+              "field": "error.message",
+              "value": "eks-audit reroute failed: {{{_ingest.on_failure_message}}}"
+            }
+          }
+        ],
+        "tag": "eks-audit-to-kubernetes-audit-logs",
+        "dataset": [
+          "kubernetes.audit_logs"
+        ],
+        "if": "ctx.data_stream?.dataset != 'kubernetes.audit_logs'\n&& ctx.aws?.cloudwatch?.log_group instanceof String\n&& ctx.aws.cloudwatch.log_group.contains('/aws/eks/')\n&& ctx.aws.cloudwatch.log_stream instanceof String\n&& ctx.aws.cloudwatch.log_stream.startsWith('kube-apiserver-audit')"
+      }
+    },
+    {
+      "pipeline": {
+        "name": "logs-aws-process-eks-control-plane",
+        "ignore_failure": true,
+        "tag": "eks-non-audit-control-plane",
+        "if": "ctx.aws?.cloudwatch?.log_group instanceof String && ctx.aws.cloudwatch.log_group.contains('/aws/eks/')"
+      }
+    },
+    {
+      "pipeline": {
+        "name": "logs-aws-containerinsights-application",
+        "ignore_failure": true,
+        "tag": "ci-application-parse",
+        "if": "ctx.aws?.cloudwatch?.log_group instanceof String && ctx.aws.cloudwatch.log_group.contains('/containerinsights/') && (ctx.aws.cloudwatch.log_group.contains('/application') || ctx.aws.cloudwatch.log_group.contains('/fluent-bit-fargate') || ctx.aws.cloudwatch.log_group.contains('/dataplane'))"
+      }
+    },
+    {
+      "pipeline": {
+        "name": "logs-aws.cloudwatch_logs-default@stream.processing",
+        "ignore_missing_pipeline": true,
+        "description": "Call the stream's managed pipeline - do not change this manually but instead use the streams UI or API",
+        "if": "ctx.data_stream?.namespace == 'default'"
+      }
+    },
+    {
+      "json": {
+        "tag": "ci-application-context-json",
+        "field": "log.attributes",
+        "target_field": "log.attributes",
+        "ignore_failure": true,
+        "if": "ctx.log?.attributes instanceof String && ctx.log.attributes.trim().startsWith('{')"
+      }
+    }
+  ],
+  "on_failure": [
+    {
+      "append": {
+        "field": "tags",
+        "allow_duplicates": false,
+        "value": "cloudwatch-logs-custom-failed"
+      }
+    },
+    {
+      "set": {
+        "field": "error.message",
+        "value": "logs-aws.cloudwatch_logs@custom: {{{_ingest.on_failure_message}}}"
+      }
+    }
+  ]
+}

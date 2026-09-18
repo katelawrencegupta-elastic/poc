@@ -1,0 +1,198 @@
+{
+  "template": {
+    "settings": {
+      "index": {
+        "mapping": {
+          "total_fields": {
+            "limit": 2000,
+            "ignore_dynamic_beyond_limit": true
+          }
+        }
+      }
+    },
+    "mappings": {
+      "properties": {
+        "kubernetes": {
+          "properties": {
+            "component": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "namespace": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "pod": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "uid": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "container": {
+          "properties": {
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "image": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "process": {
+          "properties": {
+            "pid": {
+              "type": "long"
+            }
+          }
+        },
+        "related": {
+          "properties": {
+            "user": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "log": {
+          "properties": {
+            "attributes": {
+              "type": "flattened"
+            },
+            "iostream": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "level": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "logger": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "origin": {
+              "properties": {
+                "file": {
+                  "properties": {
+                    "line": {
+                      "type": "long"
+                    },
+                    "name": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "http": {
+          "properties": {
+            "request": {
+              "properties": {
+                "method": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "source": {
+          "properties": {
+            "address": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "port": {
+              "type": "long"
+            },
+            "ip": {
+              "type": "ip"
+            }
+          }
+        },
+        "error": {
+          "properties": {
+            "message": {
+              "type": "match_only_text"
+            }
+          }
+        },
+        "event": {
+          "properties": {
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "outcome": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "user": {
+          "properties": {
+            "roles": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword",
+              "fields": {
+                "text": {
+                  "type": "match_only_text"
+                }
+              }
+            },
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "url": {
+          "properties": {
+            "path": {
+              "type": "wildcard"
+            },
+            "original": {
+              "type": "wildcard",
+              "fields": {
+                "text": {
+                  "type": "match_only_text"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "_meta": {
+    "description": "ECS fields for parsed EKS control-plane and Container Insights CloudWatch logs. log.attributes is flattened so inner JSON keys cannot explode the LogsDB field limit.",
+    "package": {
+      "name": "aws"
+    }
+  }
+}

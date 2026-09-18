@@ -1,0 +1,117 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    annotations:
+      meta.helm.sh/release-name: elastic-otel
+      meta.helm.sh/release-namespace: elastic
+    creationTimestamp: "2026-09-03T11:34:47Z"
+    labels:
+      app.kubernetes.io/component: standalone-collector
+      app.kubernetes.io/instance: elastic-otel
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: opentelemetry-collector
+      app.kubernetes.io/part-of: opentelemetry-collector
+      app.kubernetes.io/version: 0.158.0
+      helm.sh/chart: opentelemetry-collector-0.169.0
+    name: elastic-otel-opentelemetry-collector
+    namespace: elastic
+    resourceVersion: "3153454396"
+    uid: ad79e359-449d-4360-88ba-90bdcd0e35a5
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    annotations:
+      meta.helm.sh/release-name: elastic-otel
+      meta.helm.sh/release-namespace: elastic
+    creationTimestamp: "2026-09-03T11:34:47Z"
+    labels:
+      app.kubernetes.io/component: standalone-collector
+      app.kubernetes.io/instance: elastic-otel
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: opentelemetry-collector
+      app.kubernetes.io/part-of: opentelemetry-collector
+      app.kubernetes.io/version: 0.158.0
+      helm.sh/chart: opentelemetry-collector-0.169.0
+    name: elastic-otel-opentelemetry-collector
+    resourceVersion: "3169631840"
+    uid: 8e98c54e-b329-4be8-8391-fa1798c562c1
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - events
+    - namespaces
+    - namespaces/status
+    - nodes
+    - nodes/spec
+    - nodes/stats
+    - nodes/proxy
+    - pods
+    - pods/status
+    - replicationcontrollers
+    - replicationcontrollers/status
+    - resourcequotas
+    - services
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - apps
+    resources:
+    - daemonsets
+    - deployments
+    - replicasets
+    - statefulsets
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - batch
+    resources:
+    - jobs
+    - cronjobs
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - autoscaling
+    resources:
+    - horizontalpodautoscalers
+    verbs:
+    - get
+    - list
+    - watch
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    annotations:
+      meta.helm.sh/release-name: elastic-otel
+      meta.helm.sh/release-namespace: elastic
+    creationTimestamp: "2026-09-03T11:34:47Z"
+    labels:
+      app.kubernetes.io/component: standalone-collector
+      app.kubernetes.io/instance: elastic-otel
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: opentelemetry-collector
+      app.kubernetes.io/part-of: opentelemetry-collector
+      app.kubernetes.io/version: 0.158.0
+      helm.sh/chart: opentelemetry-collector-0.169.0
+    name: elastic-otel-opentelemetry-collector
+    resourceVersion: "3153454401"
+    uid: f083bca1-c2ea-4383-a912-fe3718e91798
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: elastic-otel-opentelemetry-collector
+  subjects:
+  - kind: ServiceAccount
+    name: elastic-otel-opentelemetry-collector
+    namespace: elastic
+kind: List
+metadata:
+  resourceVersion: ""

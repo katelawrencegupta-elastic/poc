@@ -1,0 +1,12 @@
+{
+  "description": "Allowlist WAF lookup fields. Drops request headers (including Authorization) before they land on lookup-waf-trace.",
+  "processors": [
+    {
+      "script": {
+        "tag": "slim-waf-lookup",
+        "lang": "painless",
+        "source": "String headerIgnoreCase(def headers, def names) {\n  if (!(headers instanceof Map)) {\n    return null;\n  }\n  for (name in names) {\n    def v = headers.get(name);\n    if (v != null) {\n      String s = v.toString().trim();\n      if (!s.isEmpty()) {\n        return s;\n      }\n    }\n  }\n  for (entry in headers.entrySet()) {\n    def k = entry.getKey();\n    if (k == null) {\n      continue;\n    }\n    String lk = k.toString().toLowerCase();\n    for (name in names) {\n      if (lk.equals(((String) name).toLowerCase())) {\n        def v = entry.getValue();\n        if (v != null) {\n          String s = v.toString().trim();\n          if (!s.isEmpty()) {\n            return s;\n          }\n        }\n      }\n    }\n  }\n  return null;\n}\ndef tid = ctx.trace != null ? ctx.trace.id : null;\ndef tnt = ctx.tnt;\nif (tnt == null) {\n  tnt = headerIgnoreCase(ctx.aws?.waf?.request?.headers, ['tnt', 'Tnt', 'TNT', 'tenant', 'Tenant', 'tenantid']);\n}\ndef out = new HashMap();\nout.put('@timestamp', ctx['@timestamp']);\nif (tid != null) {\n  def tr = new HashMap();\n  tr.put('id', tid);\n  out.put('trace', tr);\n}\nif (tnt != null) {\n  out.put('tnt', tnt.toString().trim());\n}\ndef action = ctx.event != null ? ctx.event.action : null;\nif (action != null) {\n  def ev = new HashMap();\n  ev.put('action', action);\n  out.put('event', ev);\n}\ndef ruleId = ctx.rule != null ? ctx.rule.id : null;\nif (ruleId != null) {\n  def rule = new HashMap();\n  rule.put('id', ruleId);\n  out.put('rule', rule);\n}\ndef arn = ctx.aws?.waf?.arn;\nif (arn != null) {\n  def waf = new HashMap();\n  waf.put('arn', arn);\n  def aws = new HashMap();\n  aws.put('waf', waf);\n  out.put('aws', aws);\n}\ndef reqId = ctx.http?.request?.id;\nif (reqId != null) {\n  def req = new HashMap();\n  req.put('id', reqId);\n  def http = new HashMap();\n  http.put('request', req);\n  out.put('http', http);\n}\ndef keys = new ArrayList(ctx.keySet());\nfor (k in keys) {\n  if (k.equals('_index') || k.equals('_id') || k.equals('_routing') || k.equals('_version')) {\n    continue;\n  }\n  ctx.remove(k);\n}\nctx.putAll(out);\nif (tid != null) {\n  ctx._id = tid;\n}"
+      }
+    }
+  ]
+}

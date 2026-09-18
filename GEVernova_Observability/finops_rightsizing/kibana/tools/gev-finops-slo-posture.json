@@ -1,0 +1,10 @@
+{
+  "id": "gev-finops-slo-posture",
+  "type": "esql",
+  "description": "Current FinOps spend SLO posture (gev-finops-slo-* and meridian-slo-*). errorBudgetRemaining < 0 means violated. Daily ceilings: org $3k, stage $2k, monitoring $900, ESF $800, Agent Builder 10M tokens.",
+  "tags": ["finops", "ge-vernova", "slo"],
+  "configuration": {
+    "query": "FROM .slo-observability.summary-v3.6\n| WHERE slo.id LIKE \"gev-finops-slo-*\" OR slo.id LIKE \"meridian-slo-*\"\n| KEEP slo.id, slo.name, errorBudgetRemaining, errorBudgetConsumed, latestSliTimestamp\n| EVAL violated = errorBudgetRemaining < 0\n| SORT slo.name",
+    "params": {}
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "index": "sre-os-domain-endpoints",
+  "mappings": {
+    "properties": {
+      "aws": {
+        "properties": {
+          "dimensions": {
+            "properties": {
+              "DomainName": { "type": "keyword" }
+            }
+          }
+        }
+      },
+      "cloud": {
+        "properties": {
+          "account": {
+            "properties": {
+              "id": { "type": "keyword" }
+            }
+          },
+          "region": { "type": "keyword" }
+        }
+      },
+      "sre": {
+        "properties": {
+          "os": {
+            "properties": {
+              "endpoint": { "type": "keyword" },
+              "http_connector_id": { "type": "keyword" },
+              "apply_enabled": { "type": "boolean" },
+              "min_search_age": { "type": "keyword" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

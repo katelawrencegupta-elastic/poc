@@ -1,0 +1,14 @@
+{
+  "description": "Extract X-Ray/ALB Root= segment into ECS trace.id for ALB×WAF joins. Fleet already calls this pipeline.",
+  "processors": [
+    {
+      "script": {
+        "tag": "extract-alb-trace-root",
+        "lang": "painless",
+        "description": "Parse Root= from aws.elb.trace_id (Root-only or Self=;Root=;Parent=). Overwrites integration trace.id which is the raw header.",
+        "source": "String rootFromAmznTrace(def raw) {\n  if (raw == null) {\n    return null;\n  }\n  String s = raw.toString();\n  int idx = s.toLowerCase().indexOf('root=');\n  if (idx < 0) {\n    return null;\n  }\n  int start = idx + 5;\n  int end = s.indexOf(';', start);\n  String id = (end < 0 ? s.substring(start) : s.substring(start, end)).trim();\n  if (id.isEmpty() || id.equals('-')) {\n    return null;\n  }\n  return id;\n}\ndef id = rootFromAmznTrace(ctx.aws?.elb?.trace_id);\nif (id != null) {\n  if (ctx.trace == null) {\n    ctx.trace = new HashMap();\n  }\n  ctx.trace.id = id;\n}",
+        "ignore_failure": true
+      }
+    }
+  ]
+}

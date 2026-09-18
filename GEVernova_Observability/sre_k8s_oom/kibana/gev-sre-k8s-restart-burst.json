@@ -1,0 +1,64 @@
+{
+  "name": "[SRE] K8s multi-pod restart burst",
+  "tags": [
+    "sre",
+    "ge-vernova",
+    "k8s",
+    "oom"
+  ],
+  "consumer": "observability",
+  "rule_type_id": "observability.rules.custom_threshold",
+  "schedule": {
+    "interval": "5m"
+  },
+  "enabled": true,
+  "params": {
+    "criteria": [
+      {
+        "comparator": ">",
+        "metrics": [
+          {
+            "name": "A",
+            "aggType": "max",
+            "field": "metrics.k8s.container.restarts"
+          }
+        ],
+        "threshold": [
+          5
+        ],
+        "timeSize": 15,
+        "timeUnit": "m"
+      }
+    ],
+    "alertOnNoData": false,
+    "alertOnGroupDisappear": false,
+    "groupBy": [
+      "resource.attributes.k8s.cluster.name",
+      "resource.attributes.k8s.namespace.name",
+      "resource.attributes.k8s.deployment.name",
+      "resource.attributes.k8s.container.name"
+    ],
+    "searchConfiguration": {
+      "index": "metrics-*",
+      "query": {
+        "language": "kuery",
+        "query": "metrics.k8s.container.restarts: * and not resource.attributes.k8s.container.name: \"datadog-agent-injected\" and resource.attributes.k8s.deployment.name: *"
+      }
+    }
+  },
+  "actions": [
+    {
+      "group": "custom_threshold.fired",
+      "id": "gev-sre-server-log",
+      "params": {
+        "message": "P2 coarse restart signal: max k8s.container.restarts \u2265 5 over 15m (absolute counters \u2014 not multi-pod \u0394). Does NOT auto-start the case workflow; agent / v2 ES|QL detect true crash bursts and investigate OOM.",
+        "level": "info"
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    }
+  ]
+}

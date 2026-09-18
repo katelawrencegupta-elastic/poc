@@ -1,0 +1,10 @@
+{
+  "id": "gev-finops-rightsizing-queue",
+  "type": "esql",
+  "description": "Open + in_progress rightsizing recs (identified monthly savings). Hidden is parked and not in identified. Never add identified to captured. Source is logs-finops.rightsizing-*.",
+  "tags": ["finops", "ge-vernova", "rightsizing"],
+  "configuration": {
+    "query": "FROM logs-finops.rightsizing-*\n| WHERE @timestamp > NOW() - 90 days\n    AND finops.rightsizing.status IN (\"open\", \"in_progress\")\n| STATS recs = COUNT_DISTINCT(finops.rightsizing.id),\n        identified_usd = SUM(finops.rightsizing.estimated_monthly_savings)\n    BY finops.rightsizing.resource_name, finops.rightsizing.action,\n       finops.rightsizing.current_type, finops.rightsizing.recommended_type,\n       finops.rightsizing.resource_arn, cloud.account.id\n| SORT identified_usd DESC",
+    "params": {}
+  }
+}

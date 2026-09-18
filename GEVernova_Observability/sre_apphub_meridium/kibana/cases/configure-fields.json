@@ -1,0 +1,27 @@
+{
+  "owner": "observability",
+  "note": "Case customFields are capped at 10 in this space. Reuse account-id=caller service, region=destination host. Do not add new custom fields.",
+  "customFields": [],
+  "templates": [
+    {
+      "key": "sre-apphub-meridium-latency",
+      "name": "AppHub → Meridium latency",
+      "description": "Track AppHub client latency, errors, or timeouts to APM Classic / Meridium ingress through triage, RCA, and HITL. Custom fields reuse OpenSearch slots: account-id=caller service, region=destination host, domain-name=destination host, node-id=apphub-client.",
+      "tags": ["sre", "apphub", "meridium", "latency"],
+      "caseFields": {
+        "title": "[SRE] AppHub → Meridium latency — {service} → {dest}",
+        "description": "AppHub client hop to APM Classic / Meridium is slow, erroring, or timing out.\n\nCaller (account-id field):\nDestination (region + domain-name fields):\nHop (node-id field): apphub-client\n\nDo not change routing until a human approves.",
+        "tags": ["sre", "apphub", "meridium", "latency"],
+        "category": "application",
+        "severity": "medium",
+        "customFields": [
+          {"key": "account-id", "type": "text", "value": "(caller service)"},
+          {"key": "region", "type": "text", "value": "(destination host)"},
+          {"key": "domain-name", "type": "text", "value": "(destination host)"},
+          {"key": "node-id", "type": "text", "value": "apphub-client"},
+          {"key": "approval-status", "type": "text", "value": "pending"}
+        ]
+      }
+    }
+  ]
+}

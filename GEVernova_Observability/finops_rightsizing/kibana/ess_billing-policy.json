@@ -1,0 +1,36 @@
+{
+  "name": "ged-pgog-ess-billing",
+  "namespace": "default",
+  "description": "Elastic Cloud organization billing into the FinOps demo. Requires ESS_ORG_ID and ESS_BILLING_API_KEY.",
+  "package": {
+    "name": "ess_billing",
+    "version": "1.9.1"
+  },
+  "inputs": {
+    "ESS Billing-cel": {
+      "enabled": true,
+      "vars": {
+        "organization_id": 3727967088,
+        "api_key": "REPLACE_BILLING_ADMIN_API_KEY"
+      },
+      "streams": {
+        "ess_billing.billing": {
+          "enabled": true,
+          "vars": {
+            "hide_sensitive": true,
+            "http_client_timeout": "30s",
+            "lookbehind": 365,
+            "tags": ["forwarded", "billing"]
+          }
+        },
+        "ess_billing.credits": {
+          "enabled": true,
+          "vars": {
+            "http_client_timeout": "30s",
+            "tags": ["forwarded", "billing"]
+          }
+        }
+      }
+    }
+  }
+}

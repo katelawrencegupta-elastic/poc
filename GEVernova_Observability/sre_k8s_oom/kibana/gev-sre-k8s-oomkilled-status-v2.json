@@ -1,0 +1,47 @@
+{
+  "kind": "alert",
+  "metadata": {
+    "name": "[SRE] K8s container status reason OOMKilled",
+    "description": "P1: k8s.container.status.reason == OOMKilled (requires OTel Wave 0 enablement). May return no breaches until collectors are rolled.",
+    "tags": [
+      "sre",
+      "ge-vernova",
+      "k8s",
+      "oom"
+    ]
+  },
+  "time_field": "@timestamp",
+  "schedule": {
+    "every": "5m",
+    "lookback": "15m"
+  },
+  "recovery_strategy": "no_breach",
+  "no_data_strategy": "none",
+  "query": {
+    "format": "standalone",
+    "breach": {
+      "query": "FROM metrics-k8sclusterreceiver.otel-default\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\n| WHERE `metrics.k8s.container.status.reason` > 0\n| WHERE attributes.`k8s.container.status.reason` == \"OOMKilled\"\n    OR `attributes.k8s.container.status.reason` == \"OOMKilled\"\n| STATS oom_containers = SUM(`metrics.k8s.container.status.reason`),\n        pods = COUNT_DISTINCT(`resource.attributes.k8s.pod.name`)\n    BY `resource.attributes.k8s.cluster.name`,\n       `resource.attributes.k8s.namespace.name`,\n       `resource.attributes.k8s.deployment.name`,\n       `resource.attributes.k8s.container.name`\n| WHERE oom_containers > 0\n| KEEP `resource.attributes.k8s.cluster.name`,\n       `resource.attributes.k8s.namespace.name`,\n       `resource.attributes.k8s.deployment.name`,\n       `resource.attributes.k8s.container.name`,\n       oom_containers,\n       pods"
+    }
+  },
+  "grouping": {
+    "fields": [
+      "resource.attributes.k8s.cluster.name",
+      "resource.attributes.k8s.namespace.name",
+      "resource.attributes.k8s.deployment.name",
+      "resource.attributes.k8s.container.name"
+    ]
+  },
+  "state_transition": {
+    "pending_count": 1,
+    "recovering_count": 1
+  },
+  "artifacts": [
+    {
+      "id": "oom-dash",
+      "type": "dashboard",
+      "data": {
+        "dashboard_id": "sre-k8s-oom-crash"
+      }
+    }
+  ]
+}

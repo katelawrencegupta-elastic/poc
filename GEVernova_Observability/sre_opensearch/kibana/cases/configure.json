@@ -1,0 +1,83 @@
+{
+  "owner": "observability",
+  "closure_type": "close-by-user",
+  "connector": {
+    "id": "none",
+    "name": "none",
+    "type": ".none",
+    "fields": null
+  },
+  "customFields": [
+    {
+      "key": "domain-name",
+      "label": "OpenSearch domain",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "node-id",
+      "label": "Node ID",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "account-id",
+      "label": "AWS account",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "region",
+      "label": "AWS region",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "last-reject-count",
+      "label": "Last reject count",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "rca-class",
+      "label": "RCA class",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "proposed-fix",
+      "label": "Proposed fix",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "approval-status",
+      "label": "Approval status",
+      "type": "text",
+      "required": false,
+      "defaultValue": "pending"
+    }
+  ],
+  "templates": [
+    {
+      "key": "sre-os-search-rejected",
+      "name": "OpenSearch search rejected",
+      "description": "Track a search threadpool rejection on an AWS OpenSearch node through triage, RCA, and HITL approval.",
+      "tags": ["sre", "opensearch", "search-rejected"],
+      "caseFields": {
+        "title": "[SRE] Search rejected — {domain} / {node}",
+        "description": "P2 OpenSearch ThreadpoolSearchRejected > 0 over 15m.\n\nDomain:\nNode:\nAccount:\nRegion:\n\nDashboard: Node view.\nDo not apply cluster or AWS changes until a human approves.",
+        "tags": ["sre", "opensearch", "search-rejected"],
+        "category": "opensearch",
+        "severity": "medium",
+        "customFields": [
+          {"key": "domain-name", "type": "text", "value": "(from alert)"},
+          {"key": "node-id", "type": "text", "value": "(from alert)"},
+          {"key": "account-id", "type": "text", "value": "(from alert)"},
+          {"key": "region", "type": "text", "value": "(from alert)"},
+          {"key": "approval-status", "type": "text", "value": "pending"}
+        ]
+      }
+    }
+  ]
+}

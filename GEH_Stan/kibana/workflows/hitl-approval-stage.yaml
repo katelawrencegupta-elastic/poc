@@ -1,0 +1,35 @@
+name: hitl-approval-stage
+enabled: true
+description: Simulates a human-in-the-loop approval gate before running an ES|QL query.
+triggers:
+  - type: manual
+steps:
+  - name: wait_for_approval
+    type: waitForInput
+    with:
+      message: "Approve or deny the following action before the query runs."
+      schema:
+        type: object
+        properties:
+          approved:
+            type: boolean
+            title: "Approve to proceed"
+          notes:
+            type: string
+            title: "Notes (optional)"
+        required: ["approved"]
+
+  - name: check_approval_status_and_run_esql
+    type: if
+    condition: "steps.wait_for_approval.output.response.approved: true"   # ← fixed
+    steps:
+      - name: run_query
+        type: elasticsearch.esql.query
+        with:
+          query: FROM logs-* | LIMIT 10   # ← real index
+          format: json
+    else:
+      - name: log_rejection
+        type: console
+        with:
+          message: "Rejected by {{ steps.wait_for_approval.output.respondedBy }}. Notes: {{ steps.wait_for_approval.output.response.notes }}"

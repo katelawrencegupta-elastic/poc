@@ -1,0 +1,12 @@
+{
+  "attributes": {
+    "title": "Inference tokens by model",
+    "description": "Kibana inference token usage by model id.",
+    "visState": "{\"title\": \"Inference tokens by model\", \"type\": \"vega\", \"aggs\": [], \"params\": {\"spec\": \"{\\\"$schema\\\": \\\"https://vega.github.io/schema/vega-lite/v5.json\\\", \\\"description\\\": \\\"Kibana inference token usage by model.\\\", \\\"autosize\\\": {\\\"type\\\": \\\"fit\\\", \\\"contains\\\": \\\"padding\\\"}, \\\"data\\\": {\\\"url\\\": {\\\"%type%\\\": \\\"esql\\\", \\\"%context%\\\": true, \\\"%timefield%\\\": \\\"@timestamp\\\", \\\"query\\\": \\\"FROM .kibana-inference-token-usage\\\\n| WHERE @timestamp >= ?_tstart AND @timestamp <= ?_tend\\\\n| STATS tokens = SUM(token_usage.total_tokens) BY model = model.model_id\\\\n| SORT tokens DESC\\\\n| LIMIT 12\\\"}}, \\\"encoding\\\": {\\\"y\\\": {\\\"field\\\": \\\"model\\\", \\\"type\\\": \\\"nominal\\\", \\\"title\\\": \\\"Model\\\", \\\"sort\\\": \\\"-x\\\", \\\"axis\\\": {\\\"labelLimit\\\": 220, \\\"labelPadding\\\": 4, \\\"grid\\\": false}}, \\\"x\\\": {\\\"field\\\": \\\"tokens\\\", \\\"type\\\": \\\"quantitative\\\", \\\"title\\\": \\\"Tokens\\\", \\\"axis\\\": {\\\"grid\\\": true, \\\"tickCount\\\": 5}}}, \\\"layer\\\": [{\\\"mark\\\": {\\\"type\\\": \\\"bar\\\", \\\"cornerRadiusEnd\\\": 3, \\\"tooltip\\\": true, \\\"height\\\": {\\\"band\\\": 0.72}}, \\\"encoding\\\": {\\\"color\\\": {\\\"field\\\": \\\"tokens\\\", \\\"type\\\": \\\"quantitative\\\", \\\"scale\\\": {\\\"scheme\\\": \\\"tealblues\\\"}, \\\"legend\\\": null}, \\\"tooltip\\\": [{\\\"field\\\": \\\"model\\\", \\\"type\\\": \\\"nominal\\\", \\\"title\\\": \\\"Model\\\"}, {\\\"field\\\": \\\"tokens\\\", \\\"type\\\": \\\"quantitative\\\", \\\"title\\\": \\\"Tokens\\\", \\\"format\\\": \\\",.0f\\\"}]}}, {\\\"mark\\\": {\\\"type\\\": \\\"text\\\", \\\"align\\\": \\\"left\\\", \\\"baseline\\\": \\\"middle\\\", \\\"dx\\\": 4, \\\"fontSize\\\": 11, \\\"color\\\": \\\"#343741\\\"}, \\\"encoding\\\": {\\\"text\\\": {\\\"field\\\": \\\"tokens\\\", \\\"type\\\": \\\"quantitative\\\", \\\"format\\\": \\\",.0f\\\"}}}], \\\"config\\\": {\\\"view\\\": {\\\"stroke\\\": null}, \\\"axis\\\": {\\\"labelFontSize\\\": 11, \\\"titleFontSize\\\": 12, \\\"domain\\\": false}}}\"}}",
+    "uiStateJSON": "{}",
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": []
+}

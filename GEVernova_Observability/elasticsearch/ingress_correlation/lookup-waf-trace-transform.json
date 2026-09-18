@@ -1,0 +1,34 @@
+{
+  "source": {
+    "index": ["logs-aws.waf-default"],
+    "query": {
+      "bool": {
+        "filter": [
+          { "exists": { "field": "trace.id" } }
+        ]
+      }
+    }
+  },
+  "dest": {
+    "index": "lookup-waf-trace",
+    "pipeline": "lookup-waf-trace-slim"
+  },
+  "latest": {
+    "unique_key": ["trace.id"],
+    "sort": "@timestamp"
+  },
+  "frequency": "1m",
+  "sync": {
+    "time": {
+      "field": "@timestamp",
+      "delay": "60s"
+    }
+  },
+  "retention_policy": {
+    "time": {
+      "field": "@timestamp",
+      "max_age": "2h"
+    }
+  },
+  "description": "Latest WAF event per trace.id for ES|QL LOOKUP JOIN from ALB. Slimmed by lookup-waf-trace-slim so headers never persist."
+}

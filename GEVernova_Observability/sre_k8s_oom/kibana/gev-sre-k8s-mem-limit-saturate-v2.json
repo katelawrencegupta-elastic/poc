@@ -1,0 +1,47 @@
+{
+  "kind": "alert",
+  "metadata": {
+    "name": "[SRE] K8s container memory limit \u2265 95%",
+    "description": "P2: k8s.container.memory_limit_utilization \u2265 0.95 for \u22655 samples in lookback (excludes datadog-agent-injected). Pair with restart burst for oom.likely.",
+    "tags": [
+      "sre",
+      "ge-vernova",
+      "k8s",
+      "oom"
+    ]
+  },
+  "time_field": "@timestamp",
+  "schedule": {
+    "every": "5m",
+    "lookback": "15m"
+  },
+  "recovery_strategy": "no_breach",
+  "no_data_strategy": "none",
+  "query": {
+    "format": "standalone",
+    "breach": {
+      "query": "FROM metrics-kubeletstatsreceiver.otel-default\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\n| WHERE `metrics.k8s.container.memory_limit_utilization` >= 0.95\n| WHERE `resource.attributes.k8s.container.name` != \"datadog-agent-injected\"\n| WHERE `resource.attributes.k8s.deployment.name` IS NOT NULL\n| STATS max_util = MAX(`metrics.k8s.container.memory_limit_utilization`),\n        samples = COUNT(*)\n    BY `resource.attributes.k8s.cluster.name`,\n       `resource.attributes.k8s.namespace.name`,\n       `resource.attributes.k8s.deployment.name`,\n       `resource.attributes.k8s.container.name`\n| WHERE max_util >= 0.95 AND samples >= 5\n| KEEP `resource.attributes.k8s.cluster.name`,\n       `resource.attributes.k8s.namespace.name`,\n       `resource.attributes.k8s.deployment.name`,\n       `resource.attributes.k8s.container.name`,\n       max_util,\n       samples"
+    }
+  },
+  "grouping": {
+    "fields": [
+      "resource.attributes.k8s.cluster.name",
+      "resource.attributes.k8s.namespace.name",
+      "resource.attributes.k8s.deployment.name",
+      "resource.attributes.k8s.container.name"
+    ]
+  },
+  "state_transition": {
+    "pending_count": 1,
+    "recovering_count": 1
+  },
+  "artifacts": [
+    {
+      "id": "oom-dash",
+      "type": "dashboard",
+      "data": {
+        "dashboard_id": "sre-k8s-oom-crash"
+      }
+    }
+  ]
+}

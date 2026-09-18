@@ -1,0 +1,9 @@
+{
+  "id": "gev-finops-spike-run-auto-approve",
+  "type": "workflow",
+  "description": "Auto-approve spend-spike RCA: case + Cost Explorer/util evidence + classify, then auto page_owner/park/false_positive from RCA. orphaned_idle writes idle EC2/RDS rows to the rightsizing queue (savings $0). Optional: account, service, lookback. Never stops instances.",
+  "tags": ["finops", "spend-anomaly", "auto-approve"],
+  "configuration": {
+    "workflow_id": "gev-finops-spend-spike-auto-approve"
+  }
+}

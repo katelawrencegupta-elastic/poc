@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ComputeOptimizerGetRecs",
+      "Effect": "Allow",
+      "Action": [
+        "compute-optimizer:GetEnrollmentStatus",
+        "compute-optimizer:GetRecommendationSummaries",
+        "compute-optimizer:GetEC2InstanceRecommendations",
+        "compute-optimizer:GetEC2RecommendationProjectedMetrics",
+        "compute-optimizer:GetEBSVolumeRecommendations",
+        "compute-optimizer:GetLambdaFunctionRecommendations",
+        "compute-optimizer:GetAutoScalingGroupRecommendations",
+        "compute-optimizer:GetECSServiceRecommendations",
+        "compute-optimizer:GetRDSDatabaseRecommendations",
+        "compute-optimizer:GetIdleRecommendations"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

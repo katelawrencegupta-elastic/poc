@@ -1,0 +1,17 @@
+{
+  "title": "Rightsizing: actions-runner m5.large to t3.medium",
+  "description": "Action: downsize\nFinding: OVER_PROVISIONED\nCurrent: m5.large\nRecommended: t3.medium\nEstimated monthly savings: $38.40 USD\nAccount: 041298796264 (apm-dev)\nARN: arn:aws:ec2:us-west-2:041298796264:instance/i-09c920d4ff962442f\n\nValidate CPU in metrics-aws.ec2_metrics (cloud.instance.id = i-09c920d4ff962442f) before applying. 14d CPU avg is ~1%.",
+  "tags": ["rightsizing", "finops", "apm-dev"],
+  "owner": "observability",
+  "category": "rightsizing",
+  "severity": "medium",
+  "status": "in-progress",
+  "customFields": [
+    {"key": "resource-arn", "type": "text", "value": "arn:aws:ec2:us-west-2:041298796264:instance/i-09c920d4ff962442f"},
+    {"key": "est-monthly-savings", "type": "text", "value": "38.40"},
+    {"key": "recommended-action", "type": "text", "value": "downsize"},
+    {"key": "infeasible", "type": "toggle", "value": false}
+  ],
+  "connector": {"id": "none", "name": "none", "type": ".none", "fields": null},
+  "settings": {"syncAlerts": false}
+}

@@ -1,0 +1,158 @@
+version: "1"
+name: Persist ALB × WAF LOOKUP JOIN into logs-ingress
+enabled: true
+description: >
+  Every 5 minutes, join recent ALB access logs to the slim WAF lookup index on
+  trace.id and create one ingress document per Root in logs-ingress-default.
+  Query strings are built in Liquid before foreach so slice bounds are real
+  numbers. Rows are chunked to 800 before Liquid bulk JSON so a busy minute
+  does not exceed the template size limit. The bulk step has no `if` guard
+  (Liquid `output.size` / `| size }} > 0` both skipped indexing). Empty
+  slices emit no chunks so bulk is not reached. create + _id = trace.id
+  makes the 10m lookback overlap idempotent.
+
+triggers:
+  - type: scheduled
+    with:
+      every: "5m"
+
+consts:
+  alb_index: "logs-aws.elb_logs-default"
+  lookup_index: "lookup-waf-trace"
+  target_index: "logs-ingress-default"
+  batch_size: 800
+  query_suffix: |
+    | KEEP @timestamp, trace.id, source.ip, source.port, url.domain, url.path, http.request.method, http.response.status_code, user_agent.original, aws.elb.name, aws.elb.target_group.arn, aws.elb.action_executed, aws.elb.backend.ip, aws.elb.backend.port, aws.elb.request_processing_time.sec, aws.elb.target_status_code
+    | LOOKUP JOIN lookup-waf-trace ON trace.id
+    | WHERE event.action IS NOT NULL
+    | EVAL
+        source_ip = source.ip,
+        source_port = source.port,
+        url_domain = url.domain,
+        url_path = url.path,
+        http_method = http.request.method,
+        http_status_code = http.response.status_code,
+        ua = user_agent.original,
+        elb_name = aws.elb.name,
+        target_group_arn = `aws.elb.target_group.arn`,
+        action_executed = aws.elb.action_executed,
+        backend_ip = aws.elb.backend.ip,
+        backend_port = aws.elb.backend.port,
+        request_processing_time_sec = `aws.elb.request_processing_time.sec`,
+        target_status_code = aws.elb.target_status_code,
+        waf_action = event.action,
+        rule_id = rule.id,
+        waf_arn = `aws.waf.arn`,
+        http_request_id = `http.request.id`,
+        tnt_id = tnt
+    | STATS
+        alb_timestamp = MIN(@timestamp),
+        source_ip = VALUES(source_ip),
+        source_port = VALUES(source_port),
+        url_domain = VALUES(url_domain),
+        url_path = VALUES(url_path),
+        http_method = VALUES(http_method),
+        http_status_code = VALUES(http_status_code),
+        ua = VALUES(ua),
+        elb_name = VALUES(elb_name),
+        target_group_arn = VALUES(target_group_arn),
+        action_executed = VALUES(action_executed),
+        backend_ip = VALUES(backend_ip),
+        backend_port = VALUES(backend_port),
+        request_processing_time_sec = VALUES(request_processing_time_sec),
+        target_status_code = VALUES(target_status_code),
+        waf_action = VALUES(waf_action),
+        rule_id = VALUES(rule_id),
+        waf_arn = VALUES(waf_arn),
+        http_request_id = VALUES(http_request_id),
+        tnt = VALUES(tnt_id)
+      BY trace.id
+    | EVAL
+        alb_timestamp = MV_FIRST(alb_timestamp),
+        source_ip = MV_FIRST(source_ip),
+        source_port = MV_FIRST(source_port),
+        url_domain = MV_FIRST(url_domain),
+        url_path = MV_FIRST(url_path),
+        http_method = MV_FIRST(http_method),
+        http_status_code = MV_FIRST(http_status_code),
+        ua = MV_FIRST(ua),
+        elb_name = MV_FIRST(elb_name),
+        target_group_arn = MV_FIRST(target_group_arn),
+        action_executed = MV_FIRST(action_executed),
+        backend_ip = MV_FIRST(backend_ip),
+        backend_port = MV_FIRST(backend_port),
+        request_processing_time_sec = MV_FIRST(request_processing_time_sec),
+        target_status_code = MV_FIRST(target_status_code),
+        waf_action = MV_FIRST(waf_action),
+        rule_id = MV_FIRST(rule_id),
+        waf_arn = MV_FIRST(waf_arn),
+        http_request_id = MV_FIRST(http_request_id),
+        tnt = MV_FIRST(tnt),
+        message = CONCAT(TO_STRING(http_method), " ", TO_STRING(url_path), " ", TO_STRING(http_status_code))
+    | KEEP trace.id, alb_timestamp, source_ip, source_port, url_domain, url_path, http_method, http_status_code, ua, elb_name, target_group_arn, action_executed, backend_ip, backend_port, request_processing_time_sec, target_status_code, waf_action, rule_id, waf_arn, http_request_id, message, tnt
+    | LIMIT 20000
+
+settings:
+  timeout: 8m
+
+steps:
+  - name: slice_queries
+    type: data.parseJson
+    source: |
+      [
+      {%- assign slices = "0,1,2,3,4,5,6,7,8,9" | split: "," -%}
+      {%- for i in slices -%}
+      {%- assign slice_start = i | plus: 0 -%}
+      {%- assign slice_end = i | plus: 1 -%}
+      {%- capture q -%}FROM {{ consts.alb_index }}
+      | WHERE @timestamp > NOW() - {{ slice_end }} minutes AND @timestamp <= NOW() - {{ slice_start }} minutes AND trace.id IS NOT NULL
+      {{ consts.query_suffix }}{%- endcapture -%}
+      {{ q | json }}{% unless forloop.last %},{% endunless %}
+      {%- endfor -%}
+      ]
+
+  - name: persist_slices
+    type: foreach
+    foreach: "${{ steps.slice_queries.output }}"
+    steps:
+      - name: query_slice
+        type: elasticsearch.esql.query
+        with:
+          query: "{{ foreach.item }}"
+
+      - name: chunk_rows
+        type: data.parseJson
+        source: |
+          [
+          {%- assign rows = steps.query_slice.output.values -%}
+          {%- assign total = rows | size -%}
+          {%- assign batch_size = consts.batch_size | plus: 0 -%}
+          {%- if total > 0 -%}
+          {%- assign num_batches = total | plus: batch_size | minus: 1 | divided_by: batch_size | floor -%}
+          {%- for i in (1..num_batches) -%}
+            {%- assign offset = forloop.index0 | times: batch_size -%}
+            {%- assign batch = rows | slice: offset, batch_size -%}
+            {{ batch | json }}{% unless forloop.last %},{% endunless %}
+          {%- endfor -%}
+          {%- endif -%}
+          ]
+
+      - name: persist_batches
+        type: foreach
+        foreach: "${{ steps.chunk_rows.output }}"
+        steps:
+          - name: build_bulk_operations
+            type: data.parseJson
+            source: |
+              [
+              {%- for item in foreach.item -%}
+              {"create":{"_index":"{{ consts.target_index }}","_id":{{ item[0] | json }}}},{"@timestamp":{{ item[1] | json }},"message":{{ item[20] | json }},"tnt":{{ item[21] | json }},"trace":{"id":{{ item[0] | json }}},"source":{"ip":{{ item[2] | json }},"port":{{ item[3] | json }}},"url":{"domain":{{ item[4] | json }},"path":{{ item[5] | json }}},"http":{"request":{"method":{{ item[6] | json }},"id":{{ item[19] | json }}},"response":{"status_code":{{ item[7] | json }}}},"user_agent":{"original":{{ item[8] | json }}},"event":{"action":{{ item[16] | json }},"kind":"event","dataset":"ingress","category":["web"]},"rule":{"id":{{ item[17] | json }}},"aws":{"elb":{"name":{{ item[9] | json }},"target_group":{"arn":{{ item[10] | json }}},"action_executed":{{ item[11] | json }},"backend":{"ip":{{ item[12] | json }},"port":{{ item[13] | json }}},"request_processing_time":{"sec":{{ item[14] | json }}},"target_status_code":{{ item[15] | json }}},"waf":{"action":{{ item[16] | json }},"arn":{{ item[18] | json }}}}}{% unless forloop.last %},{% endunless %}
+              {%- endfor -%}
+              ]
+
+          - name: bulk_index_ingress
+            type: elasticsearch.bulk
+            with:
+              operations: "${{ steps.build_bulk_operations.output }}"
+            on-failure:
+              continue: true

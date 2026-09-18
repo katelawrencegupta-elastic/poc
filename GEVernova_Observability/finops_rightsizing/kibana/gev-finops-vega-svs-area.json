@@ -1,0 +1,12 @@
+{
+  "attributes": {
+    "title": "[FinOps] Daily spend stacked area (LINKED_ACCOUNT)",
+    "description": "Vega-Lite stacked area. LINKED_ACCOUNT unblended.",
+    "visState": "{\"title\": \"[FinOps] Daily spend stacked area (LINKED_ACCOUNT)\", \"type\": \"vega\", \"aggs\": [], \"params\": {\"spec\": \"{\\\"$schema\\\": \\\"https://vega.github.io/schema/vega-lite/v5.json\\\", \\\"description\\\": \\\"LINKED_ACCOUNT unblended by day and account. Stacked area (Vega-Lite stacked area analogue). Not a SERVICE total.\\\", \\\"autosize\\\": {\\\"type\\\": \\\"fit\\\", \\\"contains\\\": \\\"padding\\\"}, \\\"data\\\": {\\\"url\\\": {\\\"%type%\\\": \\\"esql\\\", \\\"%context%\\\": true, \\\"%timefield%\\\": \\\"@timestamp\\\", \\\"query\\\": \\\"FROM metrics-aws.billing-default\\\\n| WHERE @timestamp >= ?_tstart AND @timestamp <= ?_tend\\\\n  AND aws.billing.group_definition.key == \\\\\\\"LINKED_ACCOUNT\\\\\\\"\\\\n| EVAL account = CASE(\\\\n    COALESCE(aws.billing.group_by.LINKED_ACCOUNT, cloud.account.id) == \\\\\\\"985408759551\\\\\\\", \\\\\\\"apm-stage\\\\\\\",\\\\n    COALESCE(aws.billing.group_by.LINKED_ACCOUNT, cloud.account.id) == \\\\\\\"041298796264\\\\\\\", \\\\\\\"monitoring / elastic-integration\\\\\\\",\\\\n    COALESCE(aws.billing.group_by.LINKED_ACCOUNT, cloud.account.id) == \\\\\\\"439106060789\\\\\\\", \\\\\\\"ESF (439106060789)\\\\\\\",\\\\n    COALESCE(aws.billing.group_by.LINKED_ACCOUNT, cloud.account.id) == \\\\\\\"119672459156\\\\\\\", \\\\\\\"ESF (119672459156)\\\\\\\",\\\\n    COALESCE(aws.billing.group_by.LINKED_ACCOUNT, cloud.account.id)\\\\n)\\\\n| STATS spend = SUM(aws.billing.UnblendedCost.amount) BY day = BUCKET(@timestamp, 1d), account\\\\n| SORT day ASC\\\"}}, \\\"mark\\\": {\\\"type\\\": \\\"area\\\", \\\"opacity\\\": 0.75, \\\"tooltip\\\": true}, \\\"encoding\\\": {\\\"x\\\": {\\\"field\\\": \\\"day\\\", \\\"type\\\": \\\"temporal\\\", \\\"title\\\": \\\"Day\\\"}, \\\"y\\\": {\\\"field\\\": \\\"spend\\\", \\\"type\\\": \\\"quantitative\\\", \\\"stack\\\": \\\"zero\\\", \\\"title\\\": \\\"Unblended USD\\\"}, \\\"color\\\": {\\\"field\\\": \\\"account\\\", \\\"type\\\": \\\"nominal\\\", \\\"title\\\": \\\"Account\\\"}}}\"}}",
+    "uiStateJSON": "{}",
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": []
+}

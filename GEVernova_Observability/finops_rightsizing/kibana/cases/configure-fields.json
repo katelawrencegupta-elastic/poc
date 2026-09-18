@@ -1,0 +1,49 @@
+{
+  "customFields": [
+    {
+      "key": "approval-status",
+      "label": "Approval status",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "rca-class",
+      "label": "RCA class",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "proposed-fix",
+      "label": "Proposed fix",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "cloud-account-id",
+      "label": "Cloud account ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "billing-service",
+      "label": "Billing service",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "templates": [
+    {
+      "key": "finops-spend-anomaly",
+      "name": "Spend anomaly",
+      "description": "Track a Cost Explorer day-over-day or account-ceiling breach through evidence, RCA, and HITL. Never stop instances from this case.",
+      "tags": ["finops", "spend-anomaly"],
+      "caseFields": {
+        "title": "[FinOps] Spend spike",
+        "description": "Spend moved vs the recent baseline. Gather billing + utilization evidence before paging an owner.\n\nDo not StopInstances / ModifyInstanceAttribute / RDS modify.",
+        "tags": ["finops", "spend-anomaly"],
+        "category": "finops",
+        "severity": "medium"
+      }
+    }
+  ]
+}

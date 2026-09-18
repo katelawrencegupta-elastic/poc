@@ -1,0 +1,17 @@
+FROM logs-kubernetes.container_logs.otel-default
+| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend
+| WHERE QSTR("body.text:\"Out of memory.\" OR body.text:\"Out of memory\" OR body.text:\"OutOfMemoryError\" OR body.text:\"java.lang.OutOfMemoryError\" OR body.text:OOMKilled OR body.text:\"OutOfMemoryException\"")
+| WHERE `resource.attributes.k8s.deployment.name` IS NOT NULL
+| STATS hits = COUNT(*),
+        pods = COUNT_DISTINCT(`resource.attributes.k8s.pod.name`)
+    BY `resource.attributes.k8s.cluster.name`,
+       `resource.attributes.k8s.namespace.name`,
+       `resource.attributes.k8s.deployment.name`,
+       `resource.attributes.k8s.container.name`
+| WHERE hits > 0
+| KEEP `resource.attributes.k8s.cluster.name`,
+       `resource.attributes.k8s.namespace.name`,
+       `resource.attributes.k8s.deployment.name`,
+       `resource.attributes.k8s.container.name`,
+       hits,
+       pods

@@ -1,0 +1,16 @@
+{
+  "title": "Rightsizing: ai-bridge c6i.xlarge to c6i.large",
+  "description": "Action: downsize\nFinding: OVER_PROVISIONED\nCurrent: c6i.xlarge\nRecommended: c6i.large\nEstimated monthly savings: $61.20 USD\nAccount: 985408759551 (apm-stage)\nARN: arn:aws:ec2:us-west-2:985408759551:instance/i-046010bf81f3e6e54\n\nValidate CPU in metrics-aws.ec2_metrics (cloud.instance.id = i-046010bf81f3e6e54). 14d CPU avg is well under 1%.",
+  "tags": ["rightsizing", "finops", "apm-stage"],
+  "owner": "observability",
+  "category": "rightsizing",
+  "severity": "medium",
+  "customFields": [
+    {"key": "resource-arn", "type": "text", "value": "arn:aws:ec2:us-west-2:985408759551:instance/i-046010bf81f3e6e54"},
+    {"key": "est-monthly-savings", "type": "text", "value": "61.20"},
+    {"key": "recommended-action", "type": "text", "value": "downsize"},
+    {"key": "infeasible", "type": "toggle", "value": false}
+  ],
+  "connector": {"id": "none", "name": "none", "type": ".none", "fields": null},
+  "settings": {"syncAlerts": false}
+}

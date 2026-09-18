@@ -1,0 +1,106 @@
+{
+  "description": "Normalize Compute Optimizer (or equivalent) rightsizing recommendations for the FinOps space.",
+  "processors": [
+    {
+      "set": {
+        "field": "@timestamp",
+        "value": "{{_ingest.timestamp}}",
+        "override": false
+      }
+    },
+    {
+      "set": {
+        "field": "event.kind",
+        "value": "event",
+        "override": false
+      }
+    },
+    {
+      "set": {
+        "field": "event.dataset",
+        "value": "finops.rightsizing",
+        "override": false
+      }
+    },
+    {
+      "set": {
+        "field": "data_stream.type",
+        "value": "logs",
+        "override": false
+      }
+    },
+    {
+      "set": {
+        "field": "data_stream.dataset",
+        "value": "finops.rightsizing",
+        "override": false
+      }
+    },
+    {
+      "set": {
+        "field": "data_stream.namespace",
+        "value": "default",
+        "override": false
+      }
+    },
+    {
+      "set": {
+        "field": "cloud.provider",
+        "value": "aws",
+        "override": false
+      }
+    },
+    {
+      "lowercase": {
+        "field": "finops.rightsizing.status",
+        "ignore_missing": true
+      }
+    },
+    {
+      "lowercase": {
+        "field": "finops.rightsizing.action",
+        "ignore_missing": true
+      }
+    },
+    {
+      "set": {
+        "field": "finops.rightsizing.status",
+        "value": "open",
+        "override": false
+      }
+    },
+    {
+      "set": {
+        "field": "finops.rightsizing.currency",
+        "value": "USD",
+        "override": false
+      }
+    },
+    {
+      "fingerprint": {
+        "fields": [
+          "cloud.account.id",
+          "finops.rightsizing.resource_arn",
+          "finops.rightsizing.finding",
+          "finops.rightsizing.recommended_type"
+        ],
+        "target_field": "finops.rightsizing.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "set": {
+        "field": "event.ingested",
+        "value": "{{_ingest.timestamp}}"
+      }
+    }
+  ],
+  "on_failure": [
+    {
+      "set": {
+        "field": "error.message",
+        "value": "{{ _ingest.on_failure_message }}"
+      }
+    }
+  ]
+}

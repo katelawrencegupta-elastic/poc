@@ -1,0 +1,47 @@
+{
+  "kind": "alert",
+  "metadata": {
+    "name": "[SRE] K8s OOM phrase in container logs",
+    "description": "P1: container logs matched Out of memory / OutOfMemoryError / OOMKilled (phrase / QSTR \u2014 not loose MATCH).",
+    "tags": [
+      "sre",
+      "ge-vernova",
+      "k8s",
+      "oom"
+    ]
+  },
+  "time_field": "@timestamp",
+  "schedule": {
+    "every": "5m",
+    "lookback": "15m"
+  },
+  "recovery_strategy": "no_breach",
+  "no_data_strategy": "none",
+  "query": {
+    "format": "standalone",
+    "breach": {
+      "query": "FROM logs-kubernetes.container_logs.otel-default\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\n| WHERE QSTR(\"body.text:\\\"Out of memory.\\\" OR body.text:\\\"Out of memory\\\" OR body.text:\\\"OutOfMemoryError\\\" OR body.text:\\\"java.lang.OutOfMemoryError\\\" OR body.text:OOMKilled OR body.text:\\\"OutOfMemoryException\\\"\")\n| WHERE `resource.attributes.k8s.deployment.name` IS NOT NULL\n| STATS hits = COUNT(*),\n        pods = COUNT_DISTINCT(`resource.attributes.k8s.pod.name`)\n    BY `resource.attributes.k8s.cluster.name`,\n       `resource.attributes.k8s.namespace.name`,\n       `resource.attributes.k8s.deployment.name`,\n       `resource.attributes.k8s.container.name`\n| WHERE hits > 0\n| KEEP `resource.attributes.k8s.cluster.name`,\n       `resource.attributes.k8s.namespace.name`,\n       `resource.attributes.k8s.deployment.name`,\n       `resource.attributes.k8s.container.name`,\n       hits,\n       pods"
+    }
+  },
+  "grouping": {
+    "fields": [
+      "resource.attributes.k8s.cluster.name",
+      "resource.attributes.k8s.namespace.name",
+      "resource.attributes.k8s.deployment.name",
+      "resource.attributes.k8s.container.name"
+    ]
+  },
+  "state_transition": {
+    "pending_count": 1,
+    "recovering_count": 1
+  },
+  "artifacts": [
+    {
+      "id": "oom-dash",
+      "type": "dashboard",
+      "data": {
+        "dashboard_id": "sre-k8s-oom-crash"
+      }
+    }
+  ]
+}

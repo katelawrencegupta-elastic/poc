@@ -1,0 +1,12 @@
+{
+  "aws": { "dimensions": { "DomainName": "_example" } },
+  "cloud": { "account": { "id": "000000000000" }, "region": "us-west-2" },
+  "sre": {
+    "os": {
+      "endpoint": "https://search-example.us-west-2.es.amazonaws.com",
+      "http_connector_id": "",
+      "apply_enabled": false,
+      "min_search_age": "30s"
+    }
+  }
+}

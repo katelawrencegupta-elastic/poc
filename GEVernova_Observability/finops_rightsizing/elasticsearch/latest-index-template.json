@@ -1,0 +1,65 @@
+{
+  "index_patterns": ["finops-rightsizing-latest*"],
+  "priority": 500,
+  "template": {
+    "mappings": {
+      "dynamic": true,
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "event": {
+          "properties": {
+            "kind": { "type": "keyword" },
+            "dataset": { "type": "keyword" },
+            "ingested": { "type": "date" }
+          }
+        },
+        "cloud": {
+          "properties": {
+            "provider": { "type": "keyword" },
+            "account": {
+              "properties": {
+                "id": { "type": "keyword" },
+                "name": { "type": "keyword" }
+              }
+            },
+            "region": { "type": "keyword" },
+            "instance": {
+              "properties": {
+                "id": { "type": "keyword" }
+              }
+            }
+          }
+        },
+        "finops": {
+          "properties": {
+            "rightsizing": {
+              "properties": {
+                "id": { "type": "keyword" },
+                "status": { "type": "keyword" },
+                "hidden_reason": { "type": "keyword" },
+                "action": { "type": "keyword" },
+                "finding": { "type": "keyword" },
+                "resource_type": { "type": "keyword" },
+                "resource_arn": { "type": "keyword" },
+                "resource_name": { "type": "keyword" },
+                "current_type": { "type": "keyword" },
+                "recommended_type": { "type": "keyword" },
+                "performance_risk": { "type": "keyword" },
+                "lookback_days": { "type": "integer" },
+                "estimated_monthly_savings": { "type": "double" },
+                "realized_savings": { "type": "double" },
+                "currency": { "type": "keyword" },
+                "owner": { "type": "keyword" },
+                "case_id": { "type": "keyword" },
+                "source": { "type": "keyword" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "_meta": {
+    "description": "Latest-transform destination for FinOps rightsizing (not a data stream)."
+  }
+}

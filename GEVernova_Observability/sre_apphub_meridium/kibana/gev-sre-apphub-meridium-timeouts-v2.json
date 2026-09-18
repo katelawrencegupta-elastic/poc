@@ -1,0 +1,46 @@
+{
+  "kind": "alert",
+  "metadata": {
+    "name": "[SRE] AppHub \u2192 Meridium client timeouts \u2265 30s",
+    "description": "P1: \u22653 AppHub client spans to Classic/Meridium lasted \u226530s (often ~300s abort).",
+    "tags": [
+      "sre",
+      "ge-vernova",
+      "apphub",
+      "meridium",
+      "latency"
+    ]
+  },
+  "time_field": "@timestamp",
+  "schedule": {
+    "every": "5m",
+    "lookback": "15m"
+  },
+  "recovery_strategy": "no_breach",
+  "no_data_strategy": "none",
+  "query": {
+    "format": "standalone",
+    "breach": {
+      "query": "FROM traces-generic.otel-default\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\n| WHERE TO_LOWER(`resource.attributes.service.name`) LIKE \"*apphub*\"\n| WHERE TO_LOWER(`attributes.span.destination.service.resource`) LIKE \"*classic*\"\n   OR TO_LOWER(`attributes.span.destination.service.resource`) LIKE \"*meridium*\"\n| WHERE `attributes.span.duration.us` >= 30000000\n| STATS timeouts = COUNT(*),\n        p95_ms = ROUND(PERCENTILE(`attributes.span.duration.us`, 95) / 1000.0, 1),\n        max_ms = ROUND(MAX(`attributes.span.duration.us`) / 1000.0, 1)\n    BY `resource.attributes.service.name`,\n       `attributes.span.destination.service.resource`\n| WHERE timeouts >= 3\n| KEEP `resource.attributes.service.name`,\n       `attributes.span.destination.service.resource`,\n       timeouts,\n       p95_ms,\n       max_ms"
+    }
+  },
+  "grouping": {
+    "fields": [
+      "resource.attributes.service.name",
+      "attributes.span.destination.service.resource"
+    ]
+  },
+  "state_transition": {
+    "pending_count": 1,
+    "recovering_count": 1
+  },
+  "artifacts": [
+    {
+      "id": "am-dash",
+      "type": "dashboard",
+      "data": {
+        "dashboard_id": "sre-apphub-meridium-latency"
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "gev-sre-apphub-meridium-run",
+  "type": "workflow",
+  "description": "After Detection & Investigation: create/update the Observability case, gather AppHub→Meridium latency/error/timeout evidence, classify RCA, pause for HITL. Manual: service, dest (optional lookback). Classic latency/error/timeout alerts can also start this workflow. Does not change routing.",
+  "tags": ["sre", "apphub", "meridium", "latency"],
+  "configuration": {
+    "workflow_id": "gev-sre-apphub-meridium-latency-case"
+  }
+}

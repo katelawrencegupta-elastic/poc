@@ -1,0 +1,27 @@
+{
+  "owner": "observability",
+  "note": "Case customFields are capped at 10 in this space (8 already used by OpenSearch). Reuse account-id=cluster, region=namespace, domain-name=deployment, node-id=container for K8s OOM cases. Only add the template.",
+  "customFields": [],
+  "templates": [
+    {
+      "key": "sre-k8s-oom-crash",
+      "name": "K8s OOM / crash burst",
+      "description": "Track a multi-pod restart burst or OOM through triage, memory analysis, RCA, and HITL remediation. Custom fields reuse OpenSearch slots: account-id=cluster, region=namespace, domain-name=deployment, node-id=container.",
+      "tags": ["sre", "k8s", "oom"],
+      "caseFields": {
+        "title": "[SRE] K8s crash — {cluster} / {namespace} / {deployment}",
+        "description": "Anomalous pod crash burst or OOM signal.\n\nCluster (account-id field):\nNamespace (region field):\nDeployment (domain-name field):\nContainer (node-id field):\n\nDo not change memory limits until a human approves.",
+        "tags": ["sre", "k8s", "oom"],
+        "category": "kubernetes",
+        "severity": "medium",
+        "customFields": [
+          {"key": "account-id", "type": "text", "value": "(cluster)"},
+          {"key": "region", "type": "text", "value": "(namespace)"},
+          {"key": "domain-name", "type": "text", "value": "(deployment)"},
+          {"key": "node-id", "type": "text", "value": "(container)"},
+          {"key": "approval-status", "type": "text", "value": "pending"}
+        ]
+      }
+    }
+  ]
+}

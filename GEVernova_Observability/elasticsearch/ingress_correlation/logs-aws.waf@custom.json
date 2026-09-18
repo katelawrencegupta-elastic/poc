@@ -1,0 +1,23 @@
+{
+  "description": "Extract X-Amzn-Trace-Id Root= segment into ECS trace.id and tenant/tnt header into tnt. Does not stringify headers. Fleet already calls this pipeline.",
+  "processors": [
+    {
+      "script": {
+        "tag": "extract-waf-trace-root",
+        "lang": "painless",
+        "description": "Read X-Amzn-Trace-Id from the in-memory headers map and keep only the Root= value.",
+        "source": "String rootFromAmznTrace(def raw) {\n  if (raw == null) {\n    return null;\n  }\n  String s = raw.toString();\n  int idx = s.toLowerCase().indexOf('root=');\n  if (idx < 0) {\n    return null;\n  }\n  int start = idx + 5;\n  int end = s.indexOf(';', start);\n  String id = (end < 0 ? s.substring(start) : s.substring(start, end)).trim();\n  if (id.isEmpty() || id.equals('-')) {\n    return null;\n  }\n  return id;\n}\ndef headers = ctx.aws?.waf?.request?.headers;\ndef raw = null;\nif (headers instanceof Map) {\n  raw = headers.get('X-Amzn-Trace-Id');\n  if (raw == null) {\n    raw = headers.get('x-amzn-trace-id');\n  }\n  if (raw == null) {\n    for (entry in headers.entrySet()) {\n      def k = entry.getKey();\n      if (k != null && k.toString().equalsIgnoreCase('X-Amzn-Trace-Id')) {\n        raw = entry.getValue();\n        break;\n      }\n    }\n  }\n}\ndef id = rootFromAmznTrace(raw);\nif (id != null) {\n  if (ctx.trace == null) {\n    ctx.trace = new HashMap();\n  }\n  ctx.trace.id = id;\n}",
+        "ignore_failure": true
+      }
+    },
+    {
+      "script": {
+        "tag": "extract-waf-tnt",
+        "lang": "painless",
+        "description": "Copy tenant id from headers tnt / tenant / tenantid into tnt. Prefers tnt.",
+        "source": "String headerIgnoreCase(def headers, def names) {\n  if (!(headers instanceof Map)) {\n    return null;\n  }\n  for (name in names) {\n    def v = headers.get(name);\n    if (v != null) {\n      String s = v.toString().trim();\n      if (!s.isEmpty()) {\n        return s;\n      }\n    }\n  }\n  for (entry in headers.entrySet()) {\n    def k = entry.getKey();\n    if (k == null) {\n      continue;\n    }\n    String lk = k.toString().toLowerCase();\n    for (name in names) {\n      if (lk.equals(((String) name).toLowerCase())) {\n        def v = entry.getValue();\n        if (v != null) {\n          String s = v.toString().trim();\n          if (!s.isEmpty()) {\n            return s;\n          }\n        }\n      }\n    }\n  }\n  return null;\n}\ndef headers = ctx.aws?.waf?.request?.headers;\ndef tnt = headerIgnoreCase(headers, ['tnt', 'Tnt', 'TNT', 'tenant', 'Tenant', 'tenantid']);\nif (tnt != null) {\n  ctx.tnt = tnt;\n}",
+        "ignore_failure": true
+      }
+    }
+  ]
+}

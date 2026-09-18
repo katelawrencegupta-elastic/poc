@@ -1,0 +1,9 @@
+{
+  "id": "gev-sre-os-rejected-search-run",
+  "type": "workflow",
+  "description": "Run the SRE OpenSearch search-threadpool-rejected case workflow. Creates or updates an Observability case in the sre space, gathers CloudWatch AWS/ES evidence, classifies RCA, and pauses for human approval before any cancel. Required inputs: domain, node. Optional: account, region. Does not call AWS UpdateDomainConfig. Live cancel_long_searches only if the domain is opted in on sre-os-domain-endpoints.",
+  "tags": ["sre", "opensearch", "search-rejected"],
+  "configuration": {
+    "workflow_id": "gev-sre-os-rejected-search-case"
+  }
+}

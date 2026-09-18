@@ -1,0 +1,9 @@
+{
+  "id": "gev-sre-apphub-meridium-run-auto",
+  "type": "workflow",
+  "description": "Same as gev-sre-apphub-meridium-run but without HITL: creates/updates the Observability case, gathers AppHub→Meridium evidence, classifies RCA, then auto-sets approval-status to escalate_meridium_owners or investigate_apphub_proxy from the recommended fix. Manual: service, dest (optional lookback). Does not change routing.",
+  "tags": ["sre", "apphub", "meridium", "latency", "auto-approve"],
+  "configuration": {
+    "workflow_id": "gev-sre-apphub-meridium-latency-auto"
+  }
+}

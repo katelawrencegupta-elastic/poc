@@ -1,0 +1,9 @@
+{
+  "id": "gev-finops-rightsize-run-auto-approve",
+  "type": "workflow",
+  "description": "Auto-approve rightsizing investigation: case + rec + 14d CPU/RDS evidence + RCA, then auto approve_ticket/park_infeasible/reject_false_positive from RCA. Writes in_progress (or hidden) onto the rightsizing queue. Optional input: arn. Never ModifyInstanceAttribute / StopInstances.",
+  "tags": ["finops", "rightsizing", "auto-approve"],
+  "configuration": {
+    "workflow_id": "gev-finops-rightsize-auto-approve"
+  }
+}

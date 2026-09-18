@@ -1,0 +1,29 @@
+FROM metrics-k8sclusterreceiver.otel-default
+| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend
+| WHERE `metrics.k8s.container.restarts` IS NOT NULL
+| WHERE `resource.attributes.k8s.container.name` != "datadog-agent-injected"
+| WHERE `resource.attributes.k8s.deployment.name` IS NOT NULL
+| STATS max_r = MAX(`metrics.k8s.container.restarts`),
+        min_r = MIN(`metrics.k8s.container.restarts`)
+    BY `resource.attributes.k8s.cluster.name`,
+       `resource.attributes.k8s.namespace.name`,
+       `resource.attributes.k8s.deployment.name`,
+       `resource.attributes.k8s.pod.name`,
+       `resource.attributes.k8s.container.name`
+| EVAL delta = max_r - min_r
+| WHERE delta >= 1
+| STATS crashing_pods = COUNT_DISTINCT(`resource.attributes.k8s.pod.name`),
+        total_delta = SUM(delta),
+        max_pod_delta = MAX(delta)
+    BY `resource.attributes.k8s.cluster.name`,
+       `resource.attributes.k8s.namespace.name`,
+       `resource.attributes.k8s.deployment.name`,
+       `resource.attributes.k8s.container.name`
+| WHERE crashing_pods >= 2 AND total_delta >= 2
+| KEEP `resource.attributes.k8s.cluster.name`,
+       `resource.attributes.k8s.namespace.name`,
+       `resource.attributes.k8s.deployment.name`,
+       `resource.attributes.k8s.container.name`,
+       crashing_pods,
+       total_delta,
+       max_pod_delta

@@ -1,0 +1,15 @@
+{
+  "id": "gev-finops-aws-top-services",
+  "type": "esql",
+  "description": "Top AWS products by Cost Explorer SERVICE grouping unblended spend over the last N days. Do not add this total to LINKED_ACCOUNT — same dollars, different grain. SERVICE can be incomplete vs linked.",
+  "tags": ["finops", "ge-vernova", "billing"],
+  "configuration": {
+    "query": "FROM metrics-aws.billing-*\n| WHERE @timestamp >= NOW() - TO_DATEPERIOD(CONCAT(TO_STRING(?days), \" days\"))\n    AND aws.billing.group_definition.key == \"SERVICE\"\n| STATS spend = SUM(aws.billing.UnblendedCost.amount) BY aws.billing.group_by.SERVICE\n| SORT spend DESC\n| LIMIT 12",
+    "params": {
+      "days": {
+        "type": "integer",
+        "description": "Lookback window in days"
+      }
+    }
+  }
+}

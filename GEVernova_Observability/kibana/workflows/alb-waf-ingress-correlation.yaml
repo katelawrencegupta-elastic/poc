@@ -1,0 +1,291 @@
+name: Merge AWS ALB and WAF logs into ingress log
+enabled: false
+
+# Kibana: SRE space → workflow id gev-sre-alb-waf-ingress-correlation
+# (default-space id alb-waf-ingress-correlation was removed; that id is reserved/phantom)
+
+# =============================================================================
+# Workflow: Ingress Log Correlation
+# Purpose: Correlate AWS ALB access logs and AWS WAF logs on the shared
+#          X-Amzn-Trace-Id "Root" segment and write merged documents into the
+#          "logs-ingress" data stream/index.
+#
+#
+# Performance notes:
+#   - The ALB/WAF join is now performed entirely inside Elasticsearch via a
+#     single ES|QL query (STATS ... BY trace_root), instead of a
+#     foreach-over-ALB-rows + data.find-linear-scan-of-WAF-rows nested loop
+#     (which was O(n*m) in the workflow engine, i.e. up to ~125k * ~122k
+#     comparisons). A native LOOKUP JOIN is not usable here because the
+#     WAF-side join key (trace_root) does not exist as a stored field - it
+#     has to be GROK-extracted at query time from the flattened
+#     aws.waf.request.headers blob, and LOOKUP JOIN requires the join key to
+#     already exist as a real field on the lookup index. STATS ... BY
+#     trace_root is the ES|QL-native equivalent: a single hash-aggregation
+#     pass executed by Elasticsearch's compute engine, not a per-row scan
+#     performed by the workflow engine, so it scales to the volumes seen in
+#     a 10 minute window.
+#   - Rows are kept only when both an ALB-side and a WAF-side value were
+#     found for a given trace_root (inner-join semantics) - unmatched ALB
+#     rows (bots/scanners/health checks with no WAF event) are dropped,
+#     same as before.
+#   - The join query can return 10K+ rows (~10.6-10.7MB serialized), which
+#     exceeds the 10MB per-step output size limit if a single reshape step
+#     (data.map) or a single elasticsearch.bulk call tried to hold/process
+#     the whole result set at once ("map_ingress_bulk_items output exceeded
+#     the 10 MB size limit"). To fix this without touching the join logic,
+#     the joined `values` array is first split into fixed-size batches of
+#     1000 rows (chunk_correlated_rows), and the reshape + bulk-index steps
+#     are wrapped in a foreach over those batches, so every step's output
+#     stays well under the 10MB limit no matter how large the full result
+#     set is.
+#   - Array-valued step outputs are passed between steps with the
+#     object-preserving "${{ ... }}" interpolation form. The plain
+#     "{{ ... }}" form stringifies arrays of objects into
+#     "[object Object][object Object]...", which broke both the foreach
+#     input and the bulk `operations` payload.
+# =============================================================================
+
+triggers:
+  - type: scheduled
+    with:
+      every: "5m"
+
+consts:
+  lookback_window: "10m"
+  alb_index: "logs-aws.elb_logs-default"
+  waf_index: "logs-aws.waf-default"
+  target_index: "logs-ingress"
+  batch_size: 1000
+
+steps:
+  # ---------------------------------------------------------------------
+  # 1. Single ES|QL query that:
+  #      - reads recent rows from both the ALB and WAF indices in one FROM
+  #      - extracts trace_root from aws.elb.trace_id (ALB rows) via GROK
+  #      - extracts trace_root from the lowercased, stringified
+  #        aws.waf.request.headers flattened field (WAF rows) via GROK
+  #      - joins the two sides on trace_root using STATS ... BY, a hash
+  #        join executed inside Elasticsearch's compute engine
+  #      - keeps only groups where both an ALB and a WAF row were found
+  #        (inner join - unmatched ALB rows are dropped)
+  #    NOTE: unchanged from the working version - do not revert/modify.
+  # ---------------------------------------------------------------------
+  - name: query_correlated_ingress_logs
+    type: elasticsearch.esql.query
+    with:
+      query: |
+        FROM {{ consts.alb_index }}, {{ consts.waf_index }}
+        | WHERE @timestamp > NOW() - {{ consts.lookback_window }}
+        | GROK aws.elb.trace_id "Root=%{DATA:alb_trace_root};"
+        | EVAL waf_trace_header = TO_LOWER(TO_STRING(aws.waf.request.headers))
+        | GROK waf_trace_header "\"x-amzn-trace-id\":\"root=%{DATA:waf_trace_root};"
+        | EVAL trace_root = COALESCE(alb_trace_root, waf_trace_root)
+        | WHERE trace_root IS NOT NULL
+        | STATS
+            alb_timestamp = VALUES(CASE(alb_trace_root IS NOT NULL, @timestamp, NULL)),
+            waf_timestamp = VALUES(CASE(waf_trace_root IS NOT NULL, @timestamp, NULL)),
+            source_ip = VALUES(source.ip),
+            source_port = VALUES(source.port),
+            url_domain = VALUES(url.domain),
+            url_path = VALUES(url.path),
+            http_method = VALUES(http.request.method),
+            http_status_code = VALUES(http.response.status_code),
+            elb_name = VALUES(aws.elb.name),
+            target_group_arn = VALUES(aws.elb.target_group.arn),
+            action_executed = VALUES(aws.elb.action_executed),
+            user_agent = VALUES(user_agent.original),
+            backend_ip = VALUES(aws.elb.backend.ip),
+            backend_port = VALUES(aws.elb.backend.port),
+            request_processing_time_sec = VALUES(aws.elb.request_processing_time.sec),
+            target_status_code = VALUES(aws.elb.target_status_code),
+            waf_action = VALUES(event.action),
+            rule_id = VALUES(rule.id),
+            waf_arn = VALUES(aws.waf.arn),
+            http_request_id = VALUES(http.request.id)
+          BY trace_root
+        | WHERE alb_timestamp IS NOT NULL AND waf_timestamp IS NOT NULL
+        | EVAL
+            alb_timestamp = MV_FIRST(alb_timestamp),
+            waf_timestamp = MV_FIRST(waf_timestamp),
+            source_ip = MV_FIRST(source_ip),
+            source_port = MV_FIRST(source_port),
+            url_domain = MV_FIRST(url_domain),
+            url_path = MV_FIRST(url_path),
+            http_method = MV_FIRST(http_method),
+            http_status_code = MV_FIRST(http_status_code),
+            elb_name = MV_FIRST(elb_name),
+            target_group_arn = MV_FIRST(target_group_arn),
+            action_executed = MV_FIRST(action_executed),
+            user_agent = MV_FIRST(user_agent),
+            backend_ip = MV_FIRST(backend_ip),
+            backend_port = MV_FIRST(backend_port),
+            request_processing_time_sec = MV_FIRST(request_processing_time_sec),
+            target_status_code = MV_FIRST(target_status_code),
+            waf_action = MV_FIRST(waf_action),
+            rule_id = MV_FIRST(rule_id),
+            waf_arn = MV_FIRST(waf_arn),
+            http_request_id = MV_FIRST(http_request_id)
+        | KEEP trace_root, alb_timestamp, waf_timestamp, source_ip, source_port, url_domain, url_path, http_method, http_status_code, elb_name, target_group_arn, action_executed, user_agent, backend_ip, backend_port, request_processing_time_sec, target_status_code, waf_action, rule_id, waf_arn, http_request_id
+        | SORT trace_root
+        | LIMIT 150000
+
+  # ---------------------------------------------------------------------
+  # 2. Split the full correlated result set (which can be ~10K+ rows /
+  #    ~10.6-10.7MB serialized) into fixed-size batches of
+  #    {{ consts.batch_size }} rows. Each batch is a plain array of the
+  #    same columnar row-arrays produced by the ES|QL query above, so
+  #    downstream indices (item[0], item[1], ...) stay unchanged. This
+  #    step's own output is just an array-of-arrays of the same rows (no
+  #    duplication or extra fields), and is only ever read once by the
+  #    foreach below - it's the per-iteration mapping/bulk steps that
+  #    previously blew the 10MB per-step limit.
+  #
+  #    Batch-count arithmetic (integer, ceiling division):
+  #      - consts.batch_size is coerced to an integer with `| plus: 0`;
+  #        without it Liquid treats it as a string and `divided_by`
+  #        performs FLOAT division, so num_batches came out fractional
+  #        (e.g. 1.004 for 3 rows / 1000).
+  #      - a fractional num_batches made the (1..num_batches) range
+  #        iterate one extra time and emit a trailing EMPTY batch, which
+  #        then produced an empty bulk `operations` array and failed the
+  #        bulk call.
+  #      - `| floor` after the division forces whole-number ceiling
+  #        division: ceil(total / batch_size).
+  #      - when there are zero correlated rows the step emits `[]` so the
+  #        foreach below simply does not run.
+  # ---------------------------------------------------------------------
+  - name: chunk_correlated_rows
+    type: data.parseJson
+    source: |
+      [
+      {%- assign rows = steps.query_correlated_ingress_logs.output.values -%}
+      {%- assign total = rows | size -%}
+      {%- assign batch_size = consts.batch_size | plus: 0 -%}
+      {%- if total > 0 -%}
+      {%- assign num_batches = total | plus: batch_size | minus: 1 | divided_by: batch_size | floor -%}
+      {%- for i in (1..num_batches) -%}
+        {%- assign offset = forloop.index0 | times: batch_size -%}
+        {%- assign batch = rows | slice: offset, batch_size -%}
+        {{ batch | json }}{% unless forloop.last %},{% endunless %}
+      {%- endfor -%}
+      {%- endif -%}
+      ]
+
+  # ---------------------------------------------------------------------
+  # 3. Process one batch (~1000 rows) at a time so no single step ever
+  #    holds the full correlated result set in its output. Only the
+  #    looping/batching structure changes here - the correlation logic,
+  #    document shape, field mappings, create semantics (op_type create,
+  #    doc id = trace_root) and on-failure: continue behavior are exactly
+  #    the same as the previous single-batch version, just scoped to one
+  #    batch per iteration.
+  #    The batches array is passed with the object-preserving "${{ ... }}"
+  #    form so the array of row-arrays is not stringified.
+  # ---------------------------------------------------------------------
+  - name: process_correlated_batches
+    type: foreach
+    foreach: "${{ steps.chunk_correlated_rows.output }}"
+    steps:
+      # ---------------------------------------------------------------
+      # 3a. Reshape each joined row in this batch (columnar array;
+      #    indices follow the KEEP clause order in the ES|QL query above:
+      #    0=trace_root, 1=alb_timestamp, 2=waf_timestamp, 3=source_ip,
+      #    4=source_port, 5=url_domain, 6=url_path, 7=http_method,
+      #    8=http_status_code, 9=elb_name, 10=target_group_arn,
+      #    11=action_executed, 12=user_agent, 13=backend_ip,
+      #    14=backend_port, 15=request_processing_time_sec,
+      #    16=target_status_code, 17=waf_action, 18=rule_id, 19=waf_arn,
+      #    20=http_request_id) into a single {action, source} pair - the
+      #    bulk action metadata (create, doc id = trace_root) and the
+      #    ingress document body. Only ~1000 rows are mapped per
+      #    iteration, so this step's output stays well under the 10MB
+      #    limit regardless of the total result set size.
+      # ---------------------------------------------------------------
+      - name: map_ingress_bulk_items
+        type: data.map
+        items: "${{ foreach.item }}"
+        with:
+          fields:
+            action:
+              create:
+                _index: "{{ consts.target_index }}"
+                _id: "{{ item[0] }}"
+            source:
+              "@timestamp": >-
+                {%- if item[1] < item[2] -%}{{ item[1] }}{%- else -%}{{ item[2] }}{%- endif -%}
+              trace:
+                id: "{{ item[0] }}"
+              source:
+                ip: "{{ item[3] }}"
+                port: "{{ item[4] }}"
+              url:
+                domain: "{{ item[5] }}"
+                path: "{{ item[6] }}"
+              http:
+                request:
+                  method: "{{ item[7] }}"
+                  id: "{{ item[20] }}"
+                response:
+                  status_code: "{{ item[8] }}"
+              user_agent:
+                original: "{{ item[12] }}"
+              event:
+                action: "{{ item[17] }}"
+              rule:
+                id: "{{ item[18] }}"
+              aws:
+                elb:
+                  name: "{{ item[9] }}"
+                  target_group:
+                    arn: "{{ item[10] }}"
+                  action_executed: "{{ item[11] }}"
+                  backend:
+                    ip: "{{ item[13] }}"
+                    port: "{{ item[14] }}"
+                  request_processing_time:
+                    sec: "{{ item[15] }}"
+                  target_status_code: "{{ item[16] }}"
+                waf:
+                  action: "{{ item[17] }}"
+                  arn: "{{ item[19] }}"
+
+      # ---------------------------------------------------------------
+      # 3b. Flatten this batch's array of {action, source} pairs into the
+      #    flat, alternating operations list expected by the
+      #    Elasticsearch bulk API (action-metadata line, document line,
+      #    action-metadata line, ...). The `json` filter serializes each
+      #    nested object correctly (handling quoting/escaping). Scoped to
+      #    one batch (~1000 rows), so output size stays bounded.
+      # ---------------------------------------------------------------
+      - name: build_bulk_operations
+        type: data.parseJson
+        source: |
+          [
+          {%- for item in steps.map_ingress_bulk_items.output -%}
+          {{ item.action | json }},{{ item.source | json }}{% unless forloop.last %},{% endunless %}
+          {%- endfor -%}
+          ]
+
+      # ---------------------------------------------------------------
+      # 3c. Index this batch's ingress documents in a single bulk request
+      #    instead of one elasticsearch.index call per document. op_type
+      #    create (via the "create" action) + doc id = trace_root is
+      #    preserved so re-runs don't duplicate documents. on-failure
+      #    continue is preserved so a failure of this step (or an
+      #    individual document failure inside the bulk response) doesn't
+      #    abort the rest of the workflow / remaining batches.
+      #    `operations` uses the object-preserving "${{ ... }}" form so the
+      #    array of bulk operation objects is passed as a real array
+      #    instead of being stringified. The `if` guard is defensive: the
+      #    bulk call is skipped entirely when a batch produced no
+      #    operations (empty array), which previously errored out.
+      # ---------------------------------------------------------------
+      - name: bulk_index_ingress_logs
+        type: elasticsearch.bulk
+        if: "{{ steps.build_bulk_operations.output | size }} > 0"
+        with:
+          operations: "${{ steps.build_bulk_operations.output }}"
+        on-failure:
+          continue: true
+enabled: false

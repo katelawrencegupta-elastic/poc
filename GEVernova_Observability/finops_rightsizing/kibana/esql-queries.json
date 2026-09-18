@@ -1,0 +1,44 @@
+{
+  "space": "finops",
+  "data_view": "logs-finops.rightsizing-*",
+  "queries": {
+    "identified_savings_open": {
+      "title": "Identified monthly savings (open + in progress, exclude hidden)",
+      "esql": "FROM logs-finops.rightsizing-*\n| WHERE @timestamp > NOW() - 14 days\n  AND finops.rightsizing.status IN (\"open\", \"in_progress\")\n| STATS recs = COUNT_DISTINCT(finops.rightsizing.id),\n        identified_usd = SUM(finops.rightsizing.estimated_monthly_savings)\n    BY finops.rightsizing.action, cloud.account.id\n| SORT identified_usd DESC"
+    },
+    "captured_savings_done": {
+      "title": "Captured savings (done only — do not add to identified)",
+      "esql": "FROM logs-finops.rightsizing-*\n| WHERE @timestamp > NOW() - 90 days\n  AND finops.rightsizing.status == \"done\"\n| STATS recs = COUNT_DISTINCT(finops.rightsizing.id),\n        captured_usd = SUM(COALESCE(finops.rightsizing.realized_savings, finops.rightsizing.estimated_monthly_savings))\n    BY cloud.account.id, finops.rightsizing.action\n| SORT captured_usd DESC"
+    },
+    "action_queue": {
+      "title": "Recommended actions (visible queue)",
+      "esql": "FROM logs-finops.rightsizing-*\n| WHERE @timestamp > NOW() - 14 days\n  AND finops.rightsizing.status IN (\"open\", \"in_progress\")\n| KEEP @timestamp, finops.rightsizing.action, finops.rightsizing.finding,\n       finops.rightsizing.current_type, finops.rightsizing.recommended_type,\n       finops.rightsizing.estimated_monthly_savings, finops.rightsizing.performance_risk,\n       finops.rightsizing.resource_arn, finops.rightsizing.owner, finops.rightsizing.case_id,\n       cloud.account.id, cloud.region\n| SORT finops.rightsizing.estimated_monthly_savings DESC"
+    },
+    "hidden_infeasible": {
+      "title": "Hidden / infeasible (not in open KPIs)",
+      "esql": "FROM logs-finops.rightsizing-*\n| WHERE @timestamp > NOW() - 14 days\n  AND finops.rightsizing.status == \"hidden\"\n| STATS recs = COUNT_DISTINCT(finops.rightsizing.id),\n        parked_usd = SUM(finops.rightsizing.estimated_monthly_savings)\n    BY finops.rightsizing.hidden_reason, cloud.account.id"
+    },
+    "status_summary": {
+      "title": "Pipeline: open / hidden / in progress / done",
+      "esql": "FROM logs-finops.rightsizing-*\n| WHERE @timestamp > NOW() - 14 days\n| STATS recs = COUNT_DISTINCT(finops.rightsizing.id),\n        estimated_usd = SUM(finops.rightsizing.estimated_monthly_savings),\n        realized_usd = SUM(finops.rightsizing.realized_savings)\n    BY finops.rightsizing.status\n| SORT recs DESC"
+    },
+    "ec2_evidence": {
+      "title": "Utilization evidence for actions-runner (paste another instance id as needed)",
+      "esql": "FROM metrics-aws.ec2_metrics-*\n| WHERE @timestamp > NOW() - 14 days\n  AND cloud.instance.id == \"i-09c920d4ff962442f\"\n| STATS cpu_avg = AVG(aws.ec2.metrics.CPUUtilization.avg),\n        cpu_p95 = PERCENTILE(aws.ec2.metrics.CPUUtilization.avg, 95),\n        latest = MAX(@timestamp)\n    BY cloud.instance.id, cloud.account.id, cloud.instance.name, cloud.machine.type"
+    },
+    "low_cpu_waste": {
+      "title": "Lowest CPU instances (waste evidence, not a Compute Optimizer rec)",
+      "esql": "FROM metrics-aws.ec2_metrics-*\n| WHERE @timestamp > NOW() - 14 days\n| STATS cpu_avg = AVG(aws.ec2.metrics.CPUUtilization.avg),\n        cpu_p95 = PERCENTILE(aws.ec2.metrics.CPUUtilization.avg, 95)\n    BY cloud.instance.id, cloud.instance.name, cloud.machine.type, cloud.account.id\n| WHERE cpu_avg < 5\n| SORT cpu_avg ASC\n| LIMIT 15"
+    },
+    "filterlogevents_quota": {
+      "title": "CloudWatch FilterLogEvents CallCount vs 5 TPS account quota",
+      "esql": "FROM metrics-aws.cloudwatch_metrics-*\n| WHERE @timestamp > NOW() - 1 day\n  AND aws.cloudwatch.namespace == \"AWS/Usage\"\n  AND aws.dimensions.Resource == \"FilterLogEvents\"\n| STATS calls = SUM(aws.usage.metrics.CallCount.sum)\n    BY cloud.account.id\n| SORT calls DESC"
+    },
+    "service_dod": {
+      "title": "SERVICE + account day-over-day spike candidates",
+      "esql": "FROM metrics-aws.billing-default\n| WHERE aws.billing.group_definition.key == \"SERVICE\"\n| STATS daily = SUM(aws.billing.UnblendedCost.amount) BY day = BUCKET(@timestamp, 1 day), aws.billing.group_by.SERVICE, cloud.account.id\n| STATS latest = LAST(daily, day), prev_sum = SUM(daily), n = COUNT(daily)\n    BY aws.billing.group_by.SERVICE, cloud.account.id\n| EVAL baseline = (prev_sum - latest) / (n - 1)\n| WHERE n >= 4 AND latest > baseline * 1.5 AND latest > 100\n| SORT latest DESC\n| LIMIT 20"
+    }
+  },
+  "status_values": ["open", "hidden", "in_progress", "done"],
+  "kpi_rule": "Never add identified_usd and captured_usd into one number."
+}

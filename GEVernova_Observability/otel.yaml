@@ -140,6 +140,13 @@ config:
     k8s_cluster:
       auth_type: serviceAccount
       collection_interval: 30s
+      metrics:
+        k8s.container.status.reason:
+          enabled: true
+        k8s.container.status.state:
+          enabled: true
+        k8s.pod.status_reason:
+          enabled: true
     otlp:
       protocols:
         grpc:

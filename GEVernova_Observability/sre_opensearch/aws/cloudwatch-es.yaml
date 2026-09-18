@@ -1,0 +1,9 @@
+# Merge into the existing custom CloudWatch metrics YAML on managed AWS
+# policies (cloudwatch-aws/metrics → aws.cloudwatch_metrics). All five
+# Fleet policies already include this block. Generic namespace collection
+# returns both DomainName and DomainName+NodeId dimension sets.
+- namespace: AWS/ES
+  statistic:
+    - Average
+    - Maximum
+    - Sum

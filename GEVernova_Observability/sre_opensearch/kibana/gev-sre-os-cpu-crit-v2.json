@@ -1,0 +1,47 @@
+{
+  "kind": "alert",
+  "metadata": {
+    "name": "[SRE] OpenSearch CPU > 95",
+    "description": "P1 OpenSearch CPUUtilization > 95 for 15m. Clone of Splunk CPUUtilization critical.",
+    "tags": [
+      "sre",
+      "ge-vernova",
+      "opensearch",
+      "aws-es"
+    ]
+  },
+  "time_field": "@timestamp",
+  "schedule": {
+    "every": "5m",
+    "lookback": "15m"
+  },
+  "recovery_strategy": "no_breach",
+  "no_data_strategy": "none",
+  "query": {
+    "format": "standalone",
+    "breach": {
+      "query": "FROM metrics-aws.cloudwatch_metrics-*\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\n| WHERE aws.cloudwatch.namespace == \"AWS/ES\" AND aws.dimensions.NodeId IS NOT NULL\n| STATS cpu = MAX(aws.es.metrics.CPUUtilization.avg)\n    BY aws.dimensions.DomainName, aws.dimensions.NodeId, cloud.account.id, cloud.region\n| WHERE cpu > 95\n| KEEP aws.dimensions.DomainName, aws.dimensions.NodeId, cloud.account.id, cloud.region, cpu"
+    }
+  },
+  "grouping": {
+    "fields": [
+      "aws.dimensions.DomainName",
+      "aws.dimensions.NodeId",
+      "cloud.account.id",
+      "cloud.region"
+    ]
+  },
+  "state_transition": {
+    "pending_count": 1,
+    "recovering_count": 1
+  },
+  "artifacts": [
+    {
+      "id": "domain-dash",
+      "type": "dashboard",
+      "data": {
+        "dashboard_id": "sre-opensearch-node"
+      }
+    }
+  ]
+}

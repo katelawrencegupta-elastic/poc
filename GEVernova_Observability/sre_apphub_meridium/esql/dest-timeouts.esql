@@ -1,0 +1,17 @@
+FROM traces-generic.otel-default
+| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend
+| WHERE TO_LOWER(`resource.attributes.service.name`) LIKE "*apphub*"
+| WHERE TO_LOWER(`attributes.span.destination.service.resource`) LIKE "*classic*"
+   OR TO_LOWER(`attributes.span.destination.service.resource`) LIKE "*meridium*"
+| WHERE `attributes.span.duration.us` >= 30000000
+| STATS timeouts = COUNT(*),
+        p95_ms = ROUND(PERCENTILE(`attributes.span.duration.us`, 95) / 1000.0, 1),
+        max_ms = ROUND(MAX(`attributes.span.duration.us`) / 1000.0, 1)
+    BY `resource.attributes.service.name`,
+       `attributes.span.destination.service.resource`
+| WHERE timeouts >= 3
+| KEEP `resource.attributes.service.name`,
+       `attributes.span.destination.service.resource`,
+       timeouts,
+       p95_ms,
+       max_ms

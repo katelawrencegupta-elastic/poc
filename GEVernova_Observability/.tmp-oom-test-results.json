@@ -1,0 +1,188 @@
+{
+  "summary": {
+    "PASS": 26,
+    "FAIL": 0,
+    "WARN": 1,
+    "SKIP": 1,
+    "INFO": 1
+  },
+  "results": [
+    {
+      "track": "B",
+      "step": "B1-gev-sre-k8s-oom-phrase",
+      "status": "PASS",
+      "detail": "actions=['gev-sre-server-log', 'system-connector-.workflows'] has_workflow=True expect=True"
+    },
+    {
+      "track": "B",
+      "step": "B1-gev-sre-k8s-mem-limit-saturate",
+      "status": "PASS",
+      "detail": "actions=['gev-sre-server-log', 'system-connector-.workflows'] has_workflow=True expect=True"
+    },
+    {
+      "track": "B",
+      "step": "B1-gev-sre-k8s-restart-burst",
+      "status": "PASS",
+      "detail": "actions=['gev-sre-server-log'] has_workflow=False expect=False"
+    },
+    {
+      "track": "A",
+      "step": "A1-run",
+      "status": "PASS",
+      "detail": "st=200 eid=389e6b82-7c39-4fb8-9d18-7d61e422853a"
+    },
+    {
+      "track": "A",
+      "step": "A1-key",
+      "status": "PASS",
+      "detail": "key='apm-stage|apm-classic-stage|apm-classic-service-connectsouthbound|manual' status=waiting_for_input"
+    },
+    {
+      "track": "A",
+      "step": "A2-oom-logs",
+      "status": "PASS",
+      "detail": "status=completed rows=2 sample=[[1, 'apm-classic-service-connectsouthbound-7f66c8d79b-qft64', 'service-connectsouthbound'], [1, 'apm-classic-service-connectsouthbound-7f66c8d79b-rcvtm', 'service-connectsouthbound']]"
+    },
+    {
+      "track": "A",
+      "step": "A2-restarts",
+      "status": "PASS",
+      "detail": "rows=6"
+    },
+    {
+      "track": "A",
+      "step": "A3-classify",
+      "status": "PASS",
+      "detail": "category=oom.app"
+    },
+    {
+      "track": "A",
+      "step": "A3-rca-fields",
+      "status": "PASS",
+      "detail": "missing=[] keys=['summary', 'likely_cause', 'memory_trend', 'recommended_fix_id', 'leak_or_contention', 'evidence_bullets', 'remediation_steps', 'runaway_process']"
+    },
+    {
+      "track": "A",
+      "step": "A4-case",
+      "status": "PASS",
+      "detail": "case_id=b935ca4c-ba33-4d6f-b7b8-47c4366d66ec"
+    },
+    {
+      "track": "A",
+      "step": "A5-resume",
+      "status": "PASS",
+      "detail": "st=200 {'success': True, 'executionId': '389e6b82-7c39-4fb8-9d18-7d61e422853a', 'message': 'Workflow resume scheduled'}"
+    },
+    {
+      "track": "A",
+      "step": "A5-approval-status",
+      "status": "PASS",
+      "detail": "step=completed value='approve_code_ticket' exec=completed err=None"
+    },
+    {
+      "track": "A",
+      "step": "A6-rerun",
+      "status": "PASS",
+      "detail": "eid=c63267b3-60e3-4035-8f1a-aabe55cbc491 status=waiting_for_input err="
+    },
+    {
+      "track": "A",
+      "step": "A6-cleanup-hitl",
+      "status": "PASS",
+      "detail": "rejected to clear concurrency slot"
+    },
+    {
+      "track": "B",
+      "step": "B4",
+      "status": "PASS",
+      "detail": "gated by B1 detach; restart-burst has no workflow connector"
+    },
+    {
+      "track": "B",
+      "step": "B2",
+      "status": "SKIP",
+      "detail": "oom-phrase alerts last 2h=0 (no controlled inject in this run)"
+    },
+    {
+      "track": "B",
+      "step": "B3",
+      "status": "INFO",
+      "detail": "recent alert-triggered executions in last page=28"
+    },
+    {
+      "track": "C",
+      "step": "C1-agent",
+      "status": "PASS",
+      "detail": "st=200 enabled=True tools_n=7 detect=True analysis=True remed=True tool_sample=['gev-sre-k8s-oom-run', 'platform.core.execute_workflow', 'platform.core.get_workflow_execution_status', 'platform.core.resume_workflow_execution', 'platform.core.list_workflow_executions', 'platform.core.search', 'platform.core.execute_esql']"
+    },
+    {
+      "track": "C",
+      "step": "C2-detect-24h",
+      "status": "PASS",
+      "detail": "rows=20 cols=['pods_restarted', 'max_delta', 'resource.attributes.k8s.cluster.name', 'resource.attributes.k8s.namespace.name', 'resource.attributes.k8s.deployment.name']"
+    },
+    {
+      "track": "C",
+      "step": "C2-detect-3d",
+      "status": "PASS",
+      "detail": "rows=20 golden_hit=False sample=[[20, 689, 'apm-nonprod', 'apm-analysis-dev', 'viewproxy-dev-apm-view-proxy-svc'], [5, 839, 'apm-nonprod', 'apm-classic-perf', 'apm-classic-apm-dew-ingestion-service'], [4, 664, 'apm-nonprod', 'apm-data-dev', 'data-dev-apm-timeseries-reactapp']]"
+    },
+    {
+      "track": "C",
+      "step": "C3-oom-phrase",
+      "status": "PASS",
+      "detail": "rows=2 sample=[[1, 1, 'apm-classic-service-connectsouthbound-7f66c8d79b-qft64', 'service-connectsouthbound'], [1, 1, 'apm-classic-service-connectsouthbound-7f66c8d79b-rcvtm', 'service-connectsouthbound']]"
+    },
+    {
+      "track": "C",
+      "step": "C5-tool",
+      "status": "PASS",
+      "detail": "st=200 keys=['id', 'type', 'description', 'tags', 'configuration', 'readonly', 'experimental', 'confirmation', 'schema'] wid_hint=gev-sre-k8s-oom-crash-case"
+    },
+    {
+      "track": "C",
+      "step": "C6-workflow-enabled",
+      "status": "PASS",
+      "detail": "enabled=True name=SRE K8s OOM crash \u2014 case, RCA, HITL"
+    },
+    {
+      "track": "B",
+      "step": "B5-gev-sre-k8s-oom-phrase",
+      "status": "PASS",
+      "detail": "enabled=True"
+    },
+    {
+      "track": "B",
+      "step": "B5-gev-sre-k8s-mem-limit-saturate",
+      "status": "PASS",
+      "detail": "enabled=True"
+    },
+    {
+      "track": "B",
+      "step": "B5-gev-sre-k8s-restart-burst",
+      "status": "PASS",
+      "detail": "enabled=True"
+    },
+    {
+      "track": "C",
+      "step": "C2-golden-filtered",
+      "status": "PASS",
+      "detail": "values=[[2, 1]]"
+    },
+    {
+      "track": "C",
+      "step": "C4-mem-util",
+      "status": "WARN",
+      "detail": "rows=0 sample=[] (kubeletstatsreceiver)"
+    },
+    {
+      "track": "C",
+      "step": "C4-via-workflow",
+      "status": "PASS",
+      "detail": "workflow evidence_memory completed (rows=0 earlier; agent query uses kubeletstats)"
+    }
+  ],
+  "eid_a": "389e6b82-7c39-4fb8-9d18-7d61e422853a",
+  "eid_a6": "c63267b3-60e3-4035-8f1a-aabe55cbc491",
+  "case_id": "b935ca4c-ba33-4d6f-b7b8-47c4366d66ec"
+}

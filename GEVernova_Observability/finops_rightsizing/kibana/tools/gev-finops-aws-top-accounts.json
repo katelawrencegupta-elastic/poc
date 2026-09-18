@@ -1,0 +1,15 @@
+{
+  "id": "gev-finops-aws-top-accounts",
+  "type": "esql",
+  "description": "Top AWS linked accounts by Cost Explorer unblended spend over the last N days. Known ids: 985408759551 apm-stage ($2k/day SLO), 041298796264 monitoring ($900/day SLO).",
+  "tags": ["finops", "ge-vernova", "billing"],
+  "configuration": {
+    "query": "FROM metrics-aws.billing-*\n| WHERE @timestamp >= NOW() - TO_DATEPERIOD(CONCAT(TO_STRING(?days), \" days\"))\n    AND aws.billing.group_definition.key == \"LINKED_ACCOUNT\"\n| STATS spend = SUM(aws.billing.UnblendedCost.amount) BY cloud.account.id\n| SORT spend DESC\n| LIMIT 12",
+    "params": {
+      "days": {
+        "type": "integer",
+        "description": "Lookback window in days"
+      }
+    }
+  }
+}

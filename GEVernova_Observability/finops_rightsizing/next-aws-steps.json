@@ -1,0 +1,46 @@
+{
+  "goal": "Ingest AWS Compute Optimizer recommendations into logs-finops.rightsizing-default. Do not homegrown recs from Cost Explorer.",
+  "aws": {
+    "opt_in": "Enable Compute Optimizer in each workload account (or org management account with member enrollment).",
+    "collector": "ingest_compute_optimizer.py — boto3 Get* APIs for account 985408759551 / us-west-2, bulk to logs-finops.rightsizing-default.",
+    "export": "Create a daily Compute Optimizer export to S3 (EC2, EBS, Lambda, Auto Scaling, RDS, ECS on Fargate as licensed). Prefer organization export if available (later, multi-account).",
+    "ingest_options": [
+      "ingest_compute_optimizer.py (current): aws compute-optimizer get-* → map finops.rightsizing.* → bulk",
+      "Elastic Agent aws s3 input (not agentless-managed identity-federation unless a queue_url exists) → parse CSV/JSON into finops.rightsizing.*",
+      "Lambda/S3 notification → ES bulk to logs-finops.rightsizing-default"
+    ],
+    "field_map": {
+      "cloud.account.id": "accountId",
+      "cloud.region": "instanceArn region / recommendation region",
+      "cloud.instance.id": "instanceArn instance id",
+      "finops.rightsizing.resource_arn": "instanceArn / volumeArn / functionArn",
+      "finops.rightsizing.resource_type": "Ec2Instance | EbsVolume | LambdaFunction | AutoScalingGroup | RdsDBInstance | EcsService",
+      "finops.rightsizing.finding": "finding (OVER_PROVISIONED | UNDER_PROVISIONED | OPTIMIZED | IDLE)",
+      "finops.rightsizing.current_type": "currentInstanceType / currentConfiguration",
+      "finops.rightsizing.recommended_type": "recommendationOptions[0].instanceType (or equivalent)",
+      "finops.rightsizing.performance_risk": "recommendationOptions[0].performanceRisk",
+      "finops.rightsizing.lookback_days": "lookBackPeriodInDays",
+      "finops.rightsizing.estimated_monthly_savings": "recommendationOptions[0].savingsOpportunity.estimatedMonthlySavings.value",
+      "finops.rightsizing.currency": "USD",
+      "finops.rightsizing.action": "map finding: OVER_PROVISIONED→downsize, IDLE→stop_idle, UNDER_PROVISIONED→upsize, OPTIMIZED→none (drop or hide)",
+      "finops.rightsizing.status": "new recs start as open; preserve existing status/owner/case_id on the same finops.rightsizing.id",
+      "finops.rightsizing.source": "compute_optimizer"
+    },
+    "hide_rules": "Set status=hidden when performance_risk is High, resource is prod-tagged, savings below a floor, or operator marks the case infeasible toggle. Seeded samples use hidden_reason=seeded_sample."
+  },
+  "elastic_already_applied": {
+    "pipeline": "finops-rightsizing",
+    "index_template": "logs-finops.rightsizing",
+    "data_stream": "logs-finops.rightsizing-default",
+    "data_view": "logs-finops.rightsizing-* in space finops (FinOps Rightsizing)",
+    "cases_owner": "observability",
+    "cases_config_id": "9640a375-0319-428d-8a86-563b50f1ca5d",
+    "sample_case_id": "4328f86f-b250-477e-b9ab-ada067c83e30",
+    "kpis": "identified = open+in_progress (exclude hidden). captured = done. never add the two. Seeded sample recs stay status=hidden / hidden_reason=seeded_sample so they never enter Identified or Captured."
+  },
+  "not_in_this_prep": [
+    "S3 export / org-wide CO",
+    "Alerting when identified_usd exceeds a threshold",
+    "Marking recs unseen this pull as superseded"
+  ]
+}

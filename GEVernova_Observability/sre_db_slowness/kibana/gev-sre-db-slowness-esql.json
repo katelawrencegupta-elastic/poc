@@ -1,0 +1,152 @@
+{
+  "attributes": {
+    "title": "[SRE] DB slowness walkthrough ES|QL",
+    "description": "Discover tabs for the DB slowness walkthrough dashboard. Each tab is named after the panel title and runs that panel's ES|QL. Time picker default last 3 days (?_tstart / ?_tend).",
+    "tabs": [
+      {
+        "id": "db-kpi-slow",
+        "label": "1. Slow postgresql spans (\u22651s)",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM traces-generic.otel-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n| WHERE `attributes.span.destination.service.resource` == \\\"postgresql\\\"\\n| WHERE `attributes.span.duration.us` >= 1000000\\n| STATS slow_spans = COUNT(*)\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      },
+      {
+        "id": "db-kpi-max",
+        "label": "1. Longest DB span (seconds)",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM traces-generic.otel-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n| WHERE `attributes.span.destination.service.resource` == \\\"postgresql\\\"\\n| WHERE `attributes.span.duration.us` >= 1000000\\n| STATS max_s = ROUND(MAX(`attributes.span.duration.us`) / 1000000.0, 1)\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      },
+      {
+        "id": "db-kpi-apps",
+        "label": "1. Apps with a slow DB span",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM traces-generic.otel-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n| WHERE `attributes.span.destination.service.resource` == \\\"postgresql\\\"\\n| WHERE `attributes.span.duration.us` >= 1000000\\n| STATS apps = COUNT_DISTINCT(`resource.attributes.service.name`)\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      },
+      {
+        "id": "db-kpi-cpu",
+        "label": "1. classic-stage-rds CPU % max",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM metrics-aws.rds-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n    AND `aws.dimensions.DBInstanceIdentifier` == \\\"apm-classic-stage-rds\\\"\\n| STATS cpu_pct = ROUND(MAX(`aws.rds.cpu.total.pct`) * 100.0, 1)\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      },
+      {
+        "id": "db-xy",
+        "label": "2. Slow postgresql spans (\u22651s) by RDS host",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM traces-generic.otel-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n    AND `attributes.span.destination.service.resource` == \\\"postgresql\\\"\\n    AND `attributes.span.duration.us` >= 1000000\\n| EVAL rds_short = CASE(\\n     COALESCE(`attributes.server.address`, `attributes.net.peer.name`) LIKE \\\"*classic-stage-rds*\\\", \\\"classic-stage-rds\\\",\\n     COALESCE(`attributes.server.address`, `attributes.net.peer.name`) LIKE \\\"*perf-db1*\\\", \\\"meridium-perf-db1\\\",\\n     COALESCE(`attributes.server.address`, `attributes.net.peer.name`) LIKE \\\"*alerts-postgres*\\\", \\\"alerts-postgres\\\",\\n     COALESCE(`attributes.server.address`, `attributes.net.peer.name`) LIKE \\\"*cases-postgres*\\\", \\\"cases-postgres\\\",\\n     COALESCE(`attributes.server.address`, `attributes.net.peer.name`) LIKE \\\"*iam-uaa-postgres*\\\", \\\"iam-uaa-postgres\\\",\\n     COALESCE(`attributes.server.address`, `attributes.net.peer.name`)\\n   )\\n| STATS slow = COUNT(*)\\n    BY t = BUCKET(@timestamp, 60, ?_tstart, ?_tend), rds_short\\n| KEEP t, rds_short, slow\\n| SORT t ASC\\n| LIMIT 2000\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      },
+      {
+        "id": "db-tbl-apps",
+        "label": "3. Apps calling postgresql (slow spans)",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM traces-generic.otel-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n| WHERE `attributes.span.destination.service.resource` == \\\"postgresql\\\"\\n| WHERE `attributes.span.duration.us` >= 1000000\\n| STATS slow = COUNT(*),\\n        p95_ms = ROUND(PERCENTILE(`attributes.span.duration.us`, 95) / 1000.0, 1),\\n        max_ms = ROUND(MAX(`attributes.span.duration.us`) / 1000.0, 1)\\n    BY app = `resource.attributes.service.name`,\\n       rds = COALESCE(`attributes.server.address`, `attributes.net.peer.name`)\\n| SORT slow DESC\\n| LIMIT 20\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      },
+      {
+        "id": "db-tbl-sql",
+        "label": "4. Slow SQL (FROM table excerpt from db.query.text)",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM traces-generic.otel-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n| WHERE `attributes.span.destination.service.resource` == \\\"postgresql\\\"\\n| WHERE `attributes.span.duration.us` >= 1000000\\n| WHERE `attributes.db.query.text` IS NOT NULL\\n| EVAL from_at = LOCATE(`attributes.db.query.text`, \\\"FROM \\\")\\n| EVAL sql = SUBSTRING(`attributes.db.query.text`, from_at, 72)\\n| STATS slow = COUNT(*),\\n        p95_ms = ROUND(PERCENTILE(`attributes.span.duration.us`, 95) / 1000.0, 1),\\n        max_ms = ROUND(MAX(`attributes.span.duration.us`) / 1000.0, 1)\\n    BY app = `resource.attributes.service.name`, sql\\n| SORT max_ms DESC\\n| LIMIT 15\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      },
+      {
+        "id": "db-tbl-tr",
+        "label": "5. Longest traces (\u22655s) \u2014 click trace.id",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM traces-generic.otel-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n    AND `attributes.span.destination.service.resource` == \\\"postgresql\\\"\\n    AND `attributes.span.duration.us` >= 5000000\\n| EVAL dur_s = ROUND(`attributes.span.duration.us` / 1000000.0, 1),\\n       from_at = LOCATE(COALESCE(`attributes.db.query.text`, \\\"\\\"), \\\"FROM \\\"),\\n       sql = SUBSTRING(COALESCE(`attributes.db.query.text`, \\\"\\\"), from_at, 64),\\n       rds = COALESCE(`attributes.server.address`, `attributes.net.peer.name`)\\n| SORT `attributes.span.duration.us` DESC\\n| KEEP @timestamp, `resource.attributes.service.name`, rds, dur_s, `trace.id`, sql\\n| LIMIT 15\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      },
+      {
+        "id": "db-tbl-logs",
+        "label": "6. Search EntityDeleted logs (DEW fan-out) \u2014 click trace.id",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM logs-kubernetes.container_logs.otel-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n    AND `resource.attributes.k8s.deployment.name` == \\\"apm-classic-meridium-service-search\\\"\\n    AND NOT `resource.attributes.k8s.container.name` == \\\"datadog-agent-injected\\\"\\n    AND `body.text` LIKE \\\"*EntityDeleted*\\\"\\n| EVAL msg = SUBSTRING(`body.text`, 1, 180)\\n| SORT @timestamp DESC\\n| KEEP @timestamp, `resource.attributes.k8s.pod.name`, `trace.id`, msg\\n| LIMIT 20\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      },
+      {
+        "id": "db-tbl-webapi",
+        "label": "7. meridium-webapi errors \u2014 click trace.id",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM logs-kubernetes.container_logs.otel-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n    AND `resource.attributes.k8s.deployment.name` == \\\"apm-classic-meridium-webapi\\\"\\n    AND NOT `resource.attributes.k8s.container.name` == \\\"datadog-agent-injected\\\"\\n    AND TO_LOWER(`body.text`) RLIKE \\\".*(error|exception).*\\\"\\n    AND NOT `body.text` LIKE \\\"*DuplicateTriggerTimeout*\\\"\\n| EVAL msg = SUBSTRING(`body.text`, 1, 180)\\n| SORT @timestamp DESC\\n| KEEP @timestamp, `trace.id`, msg\\n| LIMIT 15\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      },
+      {
+        "id": "db-tbl-ing",
+        "label": "8. classic-stage ingress (queryengine/search) \u2014 click trace.id",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM logs-ingress-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n    AND url.domain == \\\"apm-classic-stage.apm.stage.usw02.15.energy\\\"\\n    AND (\\n      url.path LIKE \\\"/api/v1/core/queryengine*\\\"\\n      OR url.path LIKE \\\"/api/v1/search*\\\"\\n      OR `http.response.status_code` >= 400\\n    )\\n| EVAL path = SUBSTRING(url.path, 1, 64)\\n| SORT @timestamp DESC\\n| KEEP @timestamp, `http.request.method`, path, `http.response.status_code`, `trace.id`\\n| LIMIT 20\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      },
+      {
+        "id": "db-tbl-rds",
+        "label": "9. apm-classic-stage-rds CloudWatch (CPU is 0\u2013100 from cpu.total.pct)",
+        "attributes": {
+          "columns": [],
+          "sort": [],
+          "kibanaSavedObjectMeta": {
+            "searchSourceJSON": "{\"query\": {\"esql\": \"FROM metrics-aws.rds-default\\n| WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend\\n    AND `aws.dimensions.DBInstanceIdentifier` == \\\"apm-classic-stage-rds\\\"\\n| STATS cpu_pct_max = ROUND(MAX(`aws.rds.cpu.total.pct`) * 100.0, 1),\\n        cpu_pct_avg = ROUND(AVG(`aws.rds.cpu.total.pct`) * 100.0, 2),\\n        max_queue = ROUND(MAX(`aws.rds.disk_queue_depth`), 2),\\n        max_read_s = ROUND(MAX(`aws.rds.latency.read`), 4),\\n        max_write_s = ROUND(MAX(`aws.rds.latency.write`), 4)\\n| KEEP cpu_pct_max, cpu_pct_avg, max_queue, max_read_s, max_write_s\"}, \"filter\": []}"
+          },
+          "isTextBasedQuery": true
+        }
+      }
+    ]
+  }
+}

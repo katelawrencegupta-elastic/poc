@@ -1,0 +1,64 @@
+{
+  "name": "[SRE] OpenSearch write threadpool rejected",
+  "tags": [
+    "sre",
+    "ge-vernova",
+    "opensearch",
+    "aws-es"
+  ],
+  "consumer": "observability",
+  "rule_type_id": "observability.rules.custom_threshold",
+  "schedule": {
+    "interval": "5m"
+  },
+  "enabled": true,
+  "params": {
+    "criteria": [
+      {
+        "comparator": ">",
+        "metrics": [
+          {
+            "name": "A",
+            "aggType": "sum",
+            "field": "aws.es.metrics.ThreadpoolWriteRejected.sum"
+          }
+        ],
+        "threshold": [
+          0
+        ],
+        "timeSize": 15,
+        "timeUnit": "m"
+      }
+    ],
+    "alertOnNoData": false,
+    "alertOnGroupDisappear": false,
+    "groupBy": [
+      "aws.dimensions.DomainName",
+      "aws.dimensions.NodeId",
+      "cloud.account.id",
+      "cloud.region"
+    ],
+    "searchConfiguration": {
+      "index": "31f4433d-7968-4434-9446-dc5aba18221a",
+      "query": {
+        "language": "kuery",
+        "query": "aws.cloudwatch.namespace : \"AWS/ES\" and aws.dimensions.NodeId : *"
+      }
+    }
+  },
+  "actions": [
+    {
+      "group": "custom_threshold.fired",
+      "id": "gev-sre-server-log",
+      "params": {
+        "message": "P2 OpenSearch ThreadpoolWriteRejected > 0 over 15m. Sibling of search rejects. Dashboard: https://my-observability-project-f2e495.kb.us-west-2.aws.elastic.cloud/s/sre/app/dashboards#/view/sre-opensearch-node?_g=(time:(from:now-1h,to:now))",
+        "level": "info"
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    }
+  ]
+}

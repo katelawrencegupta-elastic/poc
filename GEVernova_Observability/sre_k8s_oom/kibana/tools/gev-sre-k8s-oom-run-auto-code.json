@@ -1,0 +1,9 @@
+{
+  "id": "gev-sre-k8s-oom-run-auto-code",
+  "type": "workflow",
+  "description": "Same as gev-sre-k8s-oom-run but without HITL: creates/updates the Observability case, gathers evidence, classifies RCA, proposes remediations, then auto-sets approval-status to approve_code_ticket. Manual: cluster, namespace, deployment (optional container, lookback, lookback_logs). Does not patch live manifests.",
+  "tags": ["sre", "k8s", "oom", "auto-code-ticket"],
+  "configuration": {
+    "workflow_id": "gev-sre-k8s-oom-crash-auto-code"
+  }
+}

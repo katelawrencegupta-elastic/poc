@@ -1,0 +1,253 @@
+{
+  "description": "Parse Container Insights CloudWatch logs (application JSON envelopes, fluent-bit-fargate, dataplane) into ECS. Identity from kubernetes{} or log_stream; inner line grok for level/logger and trailing JSON.",
+  "processors": [
+    {
+      "grok": {
+        "tag": "ci-k8s-from-log-stream",
+        "field": "aws.cloudwatch.log_stream",
+        "ignore_missing": true,
+        "ignore_failure": true,
+        "if": "ctx.kubernetes?.pod?.name == null && ctx.aws?.cloudwatch?.log_stream instanceof String && ctx.aws.cloudwatch.log_stream.contains('containers.')",
+        "patterns": [
+          "containers\\.%{DATA:_tmp.pod_name}_%{DATA:_tmp.namespace_name}_%{DATA:_tmp.container_name}-%{K8S_CID:_tmp.container_id}"
+        ],
+        "pattern_definitions": {
+          "K8S_CID": "[0-9a-f]{8,64}"
+        }
+      }
+    },
+    {
+      "json": {
+        "tag": "ci-envelope-json",
+        "field": "message",
+        "target_field": "_tmp.ci",
+        "ignore_failure": true,
+        "if": "ctx.message instanceof String && ctx.message.trim().startsWith('{')"
+      }
+    },
+    {
+      "script": {
+        "tag": "ci-lift-envelope",
+        "lang": "painless",
+        "ignore_failure": true,
+        "if": "ctx._tmp?.ci instanceof Map",
+        "source": "def ci = ctx._tmp.ci;\nif (ctx._tmp == null) { ctx._tmp = new HashMap(); }\ndef k8s = ci.kubernetes;\nif (k8s instanceof Map) {\n  if (k8s.container_name instanceof String) { ctx._tmp.container_name = k8s.container_name; }\n  if (k8s.pod_name instanceof String) { ctx._tmp.pod_name = k8s.pod_name; }\n  if (k8s.namespace_name instanceof String) { ctx._tmp.namespace_name = k8s.namespace_name; }\n  if (k8s.pod_id instanceof String) { ctx._tmp.pod_id = k8s.pod_id; }\n  if (k8s.host instanceof String) { ctx._tmp.host = k8s.host; }\n  if (k8s.container_image instanceof String) { ctx._tmp.container_image = k8s.container_image; }\n  if (k8s.docker_id instanceof String) { ctx._tmp.container_id = k8s.docker_id; }\n}\nif (ci.stream instanceof String) { ctx._tmp.stream = ci.stream; }\nif (ci.az instanceof String) { ctx._tmp.az = ci.az; }\nif (ci.ec2_instance_id instanceof String) { ctx._tmp.ec2_instance_id = ci.ec2_instance_id; }\nif (ci.log instanceof String) {\n  ctx._tmp.log = ci.log;\n  ctx.message = ci.log;\n}"
+      }
+    },
+    {
+      "set": {
+        "tag": "ci-container-name",
+        "field": "container.name",
+        "copy_from": "_tmp.container_name",
+        "ignore_empty_value": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "tag": "ci-container-id",
+        "field": "container.id",
+        "copy_from": "_tmp.container_id",
+        "ignore_empty_value": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "tag": "ci-pod-name",
+        "field": "kubernetes.pod.name",
+        "copy_from": "_tmp.pod_name",
+        "ignore_empty_value": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "tag": "ci-namespace",
+        "field": "kubernetes.namespace",
+        "copy_from": "_tmp.namespace_name",
+        "ignore_empty_value": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "tag": "ci-pod-uid",
+        "field": "kubernetes.pod.uid",
+        "copy_from": "_tmp.pod_id",
+        "ignore_empty_value": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "tag": "ci-host-name",
+        "field": "host.name",
+        "copy_from": "_tmp.host",
+        "ignore_empty_value": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "tag": "ci-image-name",
+        "field": "container.image.name",
+        "copy_from": "_tmp.container_image",
+        "ignore_empty_value": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "tag": "ci-iostream",
+        "field": "log.iostream",
+        "copy_from": "_tmp.stream",
+        "ignore_empty_value": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "tag": "ci-az",
+        "field": "cloud.availability_zone",
+        "copy_from": "_tmp.az",
+        "ignore_empty_value": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "set": {
+        "tag": "ci-ec2-id",
+        "field": "cloud.instance.id",
+        "copy_from": "_tmp.ec2_instance_id",
+        "ignore_empty_value": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "grok": {
+        "tag": "ci-inner-line",
+        "field": "message",
+        "ignore_missing": true,
+        "ignore_failure": true,
+        "if": "ctx.message instanceof String && !ctx.message.trim().startsWith('{')",
+        "patterns": [
+          "^%{TIMESTAMP_ISO8601:_tmp.inner_ts}\\t%{WORD:log.level}\\t%{NOTSPACE:log.logger}\\t%{DATA:message}\\t%{GREEDYDATA:_tmp.context}$",
+          "^%{TIMESTAMP_ISO8601:_tmp.inner_ts}\\t%{WORD:log.level}\\t%{DATA:message}\\t%{GREEDYDATA:_tmp.context}$",
+          "^%{TIMESTAMP_ISO8601:_tmp.inner_ts}\\t%{WORD:log.level}\\t%{GREEDYDATA:message}$",
+          "^time=\"%{TIMESTAMP_ISO8601:_tmp.inner_ts}\" level=%{WORD:log.level} msg=\"%{DATA:message}\"%{GREEDYDATA:_tmp.context}$",
+          "^time=%{NOTSPACE:_tmp.inner_ts} level=%{WORD:log.level} msg=\"%{DATA:message}\"%{GREEDYDATA:_tmp.context}$",
+          "^%{TIMESTAMP_ISO8601:_tmp.inner_ts} UTC \\| %{WORD:log.logger} \\| %{WORD:log.level} \\| \\(%{DATA:log.origin.file.name}:%{NUMBER:log.origin.file.line:int} in %{DATA:_tmp.func}\\) \\| %{GREEDYDATA:message}$",
+          "^(?<log.level>[IWEF])%{MONTHNUM}%{MONTHDAY} %{TIME}%{SPACE}%{NUMBER}%{SPACE}%{DATA:log.origin.file.name}:%{NUMBER:log.origin.file.line:int}\\] %{GREEDYDATA:message}$"
+        ]
+      }
+    },
+    {
+      "json": {
+        "tag": "ci-trailing-json",
+        "field": "_tmp.context",
+        "target_field": "log.attributes",
+        "ignore_failure": true,
+        "if": "ctx._tmp?.context instanceof String && ctx._tmp.context.trim().startsWith('{')"
+      }
+    },
+    {
+      "json": {
+        "tag": "ci-inner-json",
+        "field": "message",
+        "target_field": "log.attributes",
+        "ignore_failure": true,
+        "if": "ctx.message instanceof String && ctx.message.trim().startsWith('{') && !(ctx.log?.attributes instanceof Map)"
+      }
+    },
+    {
+      "grok": {
+        "tag": "ci-level-fallback",
+        "field": "message",
+        "ignore_missing": true,
+        "ignore_failure": true,
+        "if": "ctx.log?.level == null && ctx.message instanceof String && ctx.message.contains('level=')",
+        "patterns": [
+          "level=%{WORD:log.level}"
+        ]
+      }
+    },
+    {
+      "grok": {
+        "tag": "ci-logger-fallback",
+        "field": "message",
+        "ignore_missing": true,
+        "ignore_failure": true,
+        "if": "ctx.log?.logger == null && ctx.message instanceof String && (ctx.message.contains('logger=') || ctx.message.contains('loggerName='))",
+        "patterns": [
+          "logger=%{NOTSPACE:log.logger}",
+          "loggerName=%{NOTSPACE:log.logger}"
+        ]
+      }
+    },
+    {
+      "grok": {
+        "tag": "ci-cluster-from-log-group",
+        "field": "aws.cloudwatch.log_group",
+        "ignore_missing": true,
+        "ignore_failure": true,
+        "if": "ctx.orchestrator?.cluster?.name == null && ctx.aws?.cloudwatch?.log_group instanceof String && ctx.aws.cloudwatch.log_group.contains('/containerinsights/')",
+        "patterns": [
+          "/aws/containerinsights/%{NOTSLASH:orchestrator.cluster.name}/"
+        ],
+        "pattern_definitions": {
+          "NOTSLASH": "[^/]+"
+        }
+      }
+    },
+    {
+      "script": {
+        "tag": "ci-promote-attributes",
+        "lang": "painless",
+        "ignore_failure": true,
+        "if": "ctx.log?.attributes instanceof Map",
+        "source": "def a = ctx.log.attributes;\nif (ctx.log == null) { ctx.log = new HashMap(); }\nif (ctx.log.level == null) {\n  for (def k : ['level', 'severity', 'lvl']) {\n    if (a[k] instanceof String) { ctx.log.level = a[k]; break; }\n  }\n}\nif (ctx.log.logger == null) {\n  for (def k : ['logger', 'caller', 'logger_name']) {\n    if (a[k] instanceof String) { ctx.log.logger = a[k]; break; }\n  }\n}\nfor (def k : ['msg', 'message', 'log']) {\n  if (a[k] instanceof String && ctx.message instanceof String && ctx.message.trim().startsWith('{')) {\n    ctx.message = a[k];\n    break;\n  }\n}"
+      }
+    },
+    {
+      "script": {
+        "tag": "ci-map-glog-level",
+        "lang": "painless",
+        "ignore_failure": true,
+        "if": "ctx.log?.level instanceof String && ctx.log.level.length() == 1",
+        "source": "def m = ['I':'info','W':'warn','E':'error','F':'fatal','i':'info','w':'warn','e':'error','f':'fatal'];\ndef mapped = m[ctx.log.level];\nif (mapped != null) { ctx.log.level = mapped; }"
+      }
+    },
+    {
+      "lowercase": {
+        "tag": "ci-lowercase-level",
+        "field": "log.level",
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "remove": {
+        "tag": "ci-drop-tmp",
+        "field": "_tmp",
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    }
+  ],
+  "on_failure": [
+    {
+      "append": {
+        "field": "tags",
+        "allow_duplicates": false,
+        "value": "ci-application-parse-failed"
+      }
+    },
+    {
+      "set": {
+        "field": "error.message",
+        "value": "logs-aws-containerinsights-application: {{{_ingest.on_failure_message}}}"
+      }
+    }
+  ]
+}

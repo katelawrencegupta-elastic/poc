@@ -1,0 +1,9 @@
+{
+  "id": "gev-sre-k8s-oom-run",
+  "type": "workflow",
+  "description": "After Detection & Investigation: create/update the Observability case, gather evidence, classify RCA (oom.app / oom.likely / crash.not_oom), propose remediations, pause for HITL. Manual: cluster, namespace, deployment (optional container, lookback, lookback_logs). OOM-phrase / mem-limit alerts can also start this workflow. Does not patch live manifests.",
+  "tags": ["sre", "k8s", "oom"],
+  "configuration": {
+    "workflow_id": "gev-sre-k8s-oom-crash-case"
+  }
+}

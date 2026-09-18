@@ -1,0 +1,40 @@
+{
+  "name": "[GE Vernova] AWS SERVICE day-over-day spend spike",
+  "tags": ["finops", "ge-vernova", "service-dod"],
+  "consumer": "stackAlerts",
+  "rule_type_id": ".es-query",
+  "schedule": {"interval": "1h"},
+  "enabled": true,
+  "params": {
+    "searchType": "esqlQuery",
+    "timeWindowSize": 8,
+    "timeWindowUnit": "d",
+    "threshold": [0],
+    "thresholdComparator": ">",
+    "size": 20,
+    "esqlQuery": {
+      "esql": "FROM metrics-aws.billing-default\n| WHERE aws.billing.group_definition.key == \"SERVICE\"\n| STATS daily = SUM(aws.billing.UnblendedCost.amount) BY day = BUCKET(@timestamp, 1 day), aws.billing.group_by.SERVICE, cloud.account.id\n| STATS latest = LAST(daily, day), prev_sum = SUM(daily), n = COUNT(daily)\n    BY aws.billing.group_by.SERVICE, cloud.account.id\n| EVAL baseline = (prev_sum - latest) / (n - 1)\n| WHERE n >= 4 AND latest > baseline * 1.5 AND latest > 100\n| SORT latest DESC\n| LIMIT 20"
+    },
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "sourceFields": [],
+    "timeField": "@timestamp",
+    "excludeHitsFromPreviousRun": true
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "14c1ad9c-4603-46af-9765-69410efede89",
+      "params": {
+        "message": "FinOps: a SERVICE+account day is >1.5x its prior-days average and >$100. Existing account-level DoD and $77k MTD rules are unchanged.",
+        "level": "info"
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    }
+  ]
+}

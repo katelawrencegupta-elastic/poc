@@ -1,0 +1,87 @@
+{
+  "id": "finops-hub-tabs",
+  "type": "links",
+  "grid": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 5
+  },
+  "config": {
+    "layout": "horizontal",
+    "hide_title": false,
+    "title": "FinOps dashboards",
+    "links": [
+      {
+        "label": "Overview",
+        "type": "dashboardLink",
+        "destination": "meridian-finops-llm-observability-dynamic-aws",
+        "options": {
+          "open_in_new_tab": false,
+          "use_time_range": true,
+          "use_filters": true
+        }
+      },
+      {
+        "label": "AWS Billing",
+        "type": "dashboardLink",
+        "destination": "finops-aws-billing-overview-unblended",
+        "options": {
+          "open_in_new_tab": false,
+          "use_time_range": true,
+          "use_filters": true
+        }
+      },
+      {
+        "label": "Spend vs savings",
+        "type": "dashboardLink",
+        "destination": "finops-spend-vs-savings",
+        "options": {
+          "open_in_new_tab": false,
+          "use_time_range": true,
+          "use_filters": true
+        }
+      },
+      {
+        "label": "Rightsizing",
+        "type": "dashboardLink",
+        "destination": "finops-rightsizing-overview",
+        "options": {
+          "open_in_new_tab": false,
+          "use_time_range": true,
+          "use_filters": true
+        }
+      },
+      {
+        "label": "Inference tokens",
+        "type": "dashboardLink",
+        "destination": "ffd600e5-2862-4bf4-8556-2ef8872c5ba5",
+        "options": {
+          "open_in_new_tab": false,
+          "use_time_range": true,
+          "use_filters": true
+        }
+      },
+      {
+        "label": "ESS Billing",
+        "type": "dashboardLink",
+        "destination": "4e3d2263-42f4-43ce-bd12-dd7863f18804",
+        "options": {
+          "open_in_new_tab": false,
+          "use_time_range": true,
+          "use_filters": true
+        }
+      },
+      {
+        "label": "ESS Credits",
+        "type": "dashboardLink",
+        "destination": "952b4e0a-1a55-4794-8c57-d26b8c6d9086",
+        "options": {
+          "open_in_new_tab": false,
+          "use_time_range": true,
+          "use_filters": true
+        }
+      }
+    ]
+  }
+}

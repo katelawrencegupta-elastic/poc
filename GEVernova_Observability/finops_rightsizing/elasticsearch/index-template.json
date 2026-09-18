@@ -1,0 +1,77 @@
+{
+  "index_patterns": ["logs-finops.rightsizing-*"],
+  "priority": 500,
+  "data_stream": {},
+  "composed_of": [],
+  "template": {
+    "settings": {
+      "index.default_pipeline": "finops-rightsizing"
+    },
+    "mappings": {
+      "dynamic": true,
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "event": {
+          "properties": {
+            "kind": { "type": "keyword" },
+            "dataset": { "type": "keyword" },
+            "ingested": { "type": "date" }
+          }
+        },
+        "data_stream": {
+          "properties": {
+            "type": { "type": "constant_keyword", "value": "logs" },
+            "dataset": { "type": "constant_keyword", "value": "finops.rightsizing" },
+            "namespace": { "type": "constant_keyword", "value": "default" }
+          }
+        },
+        "cloud": {
+          "properties": {
+            "provider": { "type": "keyword" },
+            "account": {
+              "properties": {
+                "id": { "type": "keyword" },
+                "name": { "type": "keyword" }
+              }
+            },
+            "region": { "type": "keyword" },
+            "instance": {
+              "properties": {
+                "id": { "type": "keyword" }
+              }
+            }
+          }
+        },
+        "finops": {
+          "properties": {
+            "rightsizing": {
+              "properties": {
+                "id": { "type": "keyword" },
+                "status": { "type": "keyword" },
+                "hidden_reason": { "type": "keyword" },
+                "action": { "type": "keyword" },
+                "finding": { "type": "keyword" },
+                "resource_type": { "type": "keyword" },
+                "resource_arn": { "type": "keyword" },
+                "resource_name": { "type": "keyword" },
+                "current_type": { "type": "keyword" },
+                "recommended_type": { "type": "keyword" },
+                "performance_risk": { "type": "keyword" },
+                "lookback_days": { "type": "integer" },
+                "estimated_monthly_savings": { "type": "double" },
+                "realized_savings": { "type": "double" },
+                "currency": { "type": "keyword" },
+                "owner": { "type": "keyword" },
+                "case_id": { "type": "keyword" },
+                "source": { "type": "keyword" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "_meta": {
+    "description": "FinOps rightsizing recommendations (Compute Optimizer ingest). Dashboard in Kibana space finops."
+  }
+}

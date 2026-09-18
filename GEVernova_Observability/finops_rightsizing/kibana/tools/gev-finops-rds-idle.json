@@ -1,0 +1,15 @@
+{
+  "id": "gev-finops-rds-idle",
+  "type": "esql",
+  "description": "Lowest RDS DBLoad instances over the last N days. CPUUtilization is not ingested; DBLoad is the live idle signal. RDS is often the #2 SERVICE on this bill after Savings Plans.",
+  "tags": ["finops", "ge-vernova", "rds"],
+  "configuration": {
+    "query": "FROM metrics-aws.rds-*\n| WHERE @timestamp >= NOW() - TO_DATEPERIOD(CONCAT(TO_STRING(?days), \" days\"))\n    AND aws.rds.metrics.DBLoad.avg IS NOT NULL\n| STATS dbload_avg = AVG(aws.rds.metrics.DBLoad.avg), samples = COUNT(*)\n    BY aws.dimensions.DBInstanceIdentifier, cloud.account.id\n| SORT dbload_avg ASC\n| LIMIT 15",
+    "params": {
+      "days": {
+        "type": "integer",
+        "description": "Lookback window in days (14 typical)"
+      }
+    }
+  }
+}

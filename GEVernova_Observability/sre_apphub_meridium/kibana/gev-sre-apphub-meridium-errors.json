@@ -1,0 +1,77 @@
+{
+  "name": "[SRE] AppHub \u2192 Meridium error rate \u2265 5%",
+  "tags": [
+    "sre",
+    "ge-vernova",
+    "apphub",
+    "meridium",
+    "latency"
+  ],
+  "consumer": "observability",
+  "rule_type_id": "observability.rules.custom_threshold",
+  "schedule": {
+    "interval": "5m"
+  },
+  "enabled": true,
+  "params": {
+    "criteria": [
+      {
+        "comparator": ">",
+        "metrics": [
+          {
+            "name": "A",
+            "aggType": "count"
+          }
+        ],
+        "threshold": [
+          19
+        ],
+        "timeSize": 15,
+        "timeUnit": "m"
+      }
+    ],
+    "alertOnNoData": false,
+    "alertOnGroupDisappear": false,
+    "groupBy": [
+      "resource.attributes.service.name",
+      "attributes.span.destination.service.resource"
+    ],
+    "searchConfiguration": {
+      "index": "26ca1dbe-d35d-49bc-aedd-14b944ec9cac",
+      "query": {
+        "language": "kuery",
+        "query": "resource.attributes.service.name: *apphub* and (attributes.span.destination.service.resource: *classic* or attributes.span.destination.service.resource: *meridium*) and attributes.event.outcome: failure"
+      }
+    }
+  },
+  "actions": [
+    {
+      "group": "custom_threshold.fired",
+      "id": "gev-sre-server-log",
+      "params": {
+        "message": "P1 AppHub client failures to Classic/Meridium (classic companion \u2192 workflow gev-sre-apphub-meridium-auto-approve). Count \u2265 20 over 15m.",
+        "level": "info"
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "gev-sre-apphub-meridium-auto-approve",
+          "summaryMode": false,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": true
+          }
+        }
+      }
+    }
+  ]
+}

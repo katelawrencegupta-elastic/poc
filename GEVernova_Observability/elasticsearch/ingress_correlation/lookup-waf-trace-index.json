@@ -1,0 +1,46 @@
+{
+  "settings": {
+    "index.mode": "lookup",
+    "index.default_pipeline": "lookup-waf-trace-slim"
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "@timestamp": { "type": "date" },
+      "trace": {
+        "properties": {
+          "id": { "type": "keyword" }
+        }
+      },
+      "tnt": { "type": "keyword", "ignore_above": 1024 },
+      "event": {
+        "properties": {
+          "action": { "type": "keyword" }
+        }
+      },
+      "rule": {
+        "properties": {
+          "id": { "type": "keyword" }
+        }
+      },
+      "aws": {
+        "properties": {
+          "waf": {
+            "properties": {
+              "arn": { "type": "keyword" }
+            }
+          }
+        }
+      },
+      "http": {
+        "properties": {
+          "request": {
+            "properties": {
+              "id": { "type": "keyword" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

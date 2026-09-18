@@ -1,0 +1,16 @@
+{
+  "title": "Rightsizing: apm-stage-sample-worker c5.xlarge to c5.large",
+  "description": "Action: downsize (completed)\nFinding: OVER_PROVISIONED\nCurrent: c5.xlarge\nRecommended: c5.large\nEstimated monthly savings: $62.10 USD\nRealized: $58.40 USD\nAccount: 985408759551 (apm-stage)\nARN: arn:aws:ec2:us-west-2:985408759551:instance/i-0sampledone01\n\nChange applied. Close this case; captured savings are recorded on the recommendation doc. Do not add captured to identified.",
+  "tags": ["rightsizing", "finops", "apm-stage", "done"],
+  "owner": "observability",
+  "category": "rightsizing",
+  "severity": "low",
+  "customFields": [
+    {"key": "resource-arn", "type": "text", "value": "arn:aws:ec2:us-west-2:985408759551:instance/i-0sampledone01"},
+    {"key": "est-monthly-savings", "type": "text", "value": "62.10"},
+    {"key": "recommended-action", "type": "text", "value": "downsize"},
+    {"key": "infeasible", "type": "toggle", "value": false}
+  ],
+  "connector": {"id": "none", "name": "none", "type": ".none", "fields": null},
+  "settings": {"syncAlerts": false}
+}

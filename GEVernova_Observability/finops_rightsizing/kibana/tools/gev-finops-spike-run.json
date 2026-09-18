@@ -1,0 +1,9 @@
+{
+  "id": "gev-finops-spike-run",
+  "type": "workflow",
+    "description": "Spend-spike RCA: case + Cost Explorer/util evidence + classify + HITL. If class is orphaned_idle, idle EC2/RDS rows are written to the rightsizing queue (savings $0). Optional inputs: account, service, lookback. Never stops instances.",
+  "tags": ["finops", "spend-anomaly"],
+  "configuration": {
+    "workflow_id": "gev-finops-spend-spike-case"
+  }
+}

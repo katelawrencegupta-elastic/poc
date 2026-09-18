@@ -1,0 +1,33 @@
+# Streamlang snapshot for logs-aws.cloudwatch_logs-default
+# Applied via PUT /api/streams/logs-aws.cloudwatch_logs-default
+# Named pipeline logs-aws-containerinsights-application owns CI parse
+# (application envelopes, fluent-bit-fargate, dataplane). Inner grok here is
+# a fallback if _tmp leftovers remain.
+
+steps:
+  - condition:
+      and:
+        - field: aws.cloudwatch.log_group
+          contains: /containerinsights/
+      steps:
+        - action: grok
+          from: message
+          patterns:
+            - "^%{TIMESTAMP_ISO8601:_tmp.inner_ts}\t%{WORD:log.level}\t%{NOTSPACE:log.logger}\t%{DATA:message}\t%{GREEDYDATA:_tmp.context}$"
+            - "^%{TIMESTAMP_ISO8601:_tmp.inner_ts}\t%{WORD:log.level}\t%{DATA:message}\t%{GREEDYDATA:_tmp.context}$"
+            - "^%{TIMESTAMP_ISO8601:_tmp.inner_ts}\t%{WORD:log.level}\t%{GREEDYDATA:message}$"
+            - "^%{TIMESTAMP_ISO8601:_tmp.inner_ts} UTC \\| %{WORD:log.logger} \\| %{WORD:log.level} \\| \\(%{DATA:log.origin.file.name}:%{NUMBER:log.origin.file.line:int} in %{DATA:_tmp.func}\\) \\| %{GREEDYDATA:message}$"
+          ignore_missing: true
+          ignore_failure: true
+        - action: lowercase
+          from: log.level
+          to: log.level
+          ignore_missing: true
+          ignore_failure: true
+        - action: set
+          to: log.attributes
+          copy_from: _tmp.context
+          ignore_failure: true
+  - action: remove_by_prefix
+    from: _tmp
+    ignore_failure: true

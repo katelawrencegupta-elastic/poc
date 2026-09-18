@@ -1,0 +1,57 @@
+{
+  "owner": "observability",
+  "closure_type": "close-by-user",
+  "connector": {
+    "id": "none",
+    "name": "none",
+    "type": ".none",
+    "fields": null
+  },
+  "customFields": [
+    {
+      "key": "resource-arn",
+      "label": "Resource ARN",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "rightsizing-id",
+      "label": "Rightsizing ID",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "est-monthly-savings",
+      "label": "Est. monthly savings USD",
+      "type": "text",
+      "required": false
+    },
+    {
+      "key": "recommended-action",
+      "label": "Recommended action",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "infeasible",
+      "label": "Hide as infeasible",
+      "type": "toggle",
+      "required": false,
+      "defaultValue": false
+    }
+  ],
+  "templates": [
+    {
+      "key": "finops-rightsizing",
+      "name": "Rightsizing",
+      "description": "Assign and track an AWS Compute Optimizer rightsizing recommendation to completion.",
+      "tags": ["rightsizing", "finops"],
+      "caseFields": {
+        "title": "Rightsizing recommendation",
+        "description": "Action: downsize or stop idle.\nFinding: (from Compute Optimizer)\nCurrent type:\nRecommended type:\nEstimated monthly savings: $ USD\nAccount:\nARN:\n\nValidate utilization in metrics-aws.ec2_metrics (or RDS/Lambda) before applying. Close as done after the change; record realized savings on the recommendation doc.",
+        "tags": ["rightsizing", "finops"],
+        "category": "rightsizing"
+      }
+    }
+  ]
+}

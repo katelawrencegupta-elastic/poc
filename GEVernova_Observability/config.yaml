@@ -71,26 +71,20 @@ inputs:
           batch_max_actions: 500
           batch_max_bytes: 10485760
 
-  # ---------------------------------------------------------------------------
-  # Amazon EKS cluster (control plane) logs
-  # Separate bucket + prefix from WAF/ELB and Fargate, e.g.
-  #   s3://<EKS-LOG-BUCKET>/<EKS-PREFIX>/
-  # Routed to kubernetes.audit_logs so the Kubernetes integration pipeline applies.
-  # If these objects are still CloudWatch-wrapped JSON, keep them on
-  # logs-aws.cloudwatch_logs-default instead and reroute audit events in an ingest pipeline.
-  # ---------------------------------------------------------------------------
-  - type: "s3-sqs"
-    id: "arn:aws:sqs:%REGION%:%ACCOUNT%:esf-eks-s3-notifications"
-    tags:
-      - "aws"
-      - "eks"
-      - "kubernetes"
-    outputs:
-      - type: "elasticsearch"
-        args:
-          elasticsearch_url: "https://my-observability-project-f2e495.es.us-west-2.aws.elastic.cloud:443"
-          api_key: "VmtUeldLQUJwNlMyMWhjZlZDb3c6a0w2SG5PckRpRk1hNW5QeHpUM3Vadw=="
-          es_datastream_name: "logs-kubernetes.audit_logs-default"
-          es_dead_letter_index: "esf-dead-letter-index"
-          batch_max_actions: 500
-          batch_max_bytes: 10485760
+  # EKS control-plane logs are collected by Fleet AWS integration (agentless),
+  # not ESF. Do not re-add an ESF EKS input.
+  #
+  # Policies (start_position: end):
+  #   ged-pgog-apm-dev            role 041298796264  log_group_name /aws/eks/apm-nonprod/cluster
+  #   ged-pgog-apm-usw02-stage    role 985408759551  log_group_name_prefix /aws/eks/
+  #   ged-pgog-pss-usw02-stg      role 119672459156  log_group_name_prefix /aws/eks/
+  #   ged-pgog-smartsignal-stg    role 439106060789  log_group_name_prefix /aws/eks/
+  # Audit (kube-apiserver-audit*) is rerouted by logs-aws.cloudwatch_logs@custom
+  # to logs-kubernetes.audit_logs-default.
+  #
+  # Remaining AWS-side cleanup (not ESF config):
+  #   - Remove CloudWatch subscription filters on /aws/eks/*/cluster in
+  #     041298796264, 985408759551, 119672459156, 439106060789 once dual-run
+  #     is no longer needed (Fleet tag aws-cloudwatch-logs / agent.name agentless-*).
+  #   - unified-usw02-dev/preprod (account 4673…) still has no managed integration;
+  #     keep that account's ESF CloudWatch subscription until a fifth policy exists.

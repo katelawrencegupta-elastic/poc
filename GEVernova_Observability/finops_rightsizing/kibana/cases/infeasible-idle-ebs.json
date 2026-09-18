@@ -1,0 +1,16 @@
+{
+  "title": "Parked: idle gp3 volume (infeasible / hidden)",
+  "description": "Action: stop_idle — PARKED\nFinding: IDLE\nCurrent: gp3\nRecommended: delete\nEstimated monthly savings: $32.00 USD (NOT in identified KPI)\nAccount: 041298796264 (apm-dev)\nARN: arn:aws:ec2:us-west-2:041298796264:volume/vol-0samplehide01\n\nMarked infeasible (prod peak risk). Hidden from the open queue and from identified savings.",
+  "tags": ["rightsizing", "finops", "apm-dev", "hidden"],
+  "owner": "observability",
+  "category": "rightsizing",
+  "severity": "low",
+  "customFields": [
+    {"key": "resource-arn", "type": "text", "value": "arn:aws:ec2:us-west-2:041298796264:volume/vol-0samplehide01"},
+    {"key": "est-monthly-savings", "type": "text", "value": "32.00"},
+    {"key": "recommended-action", "type": "text", "value": "stop_idle"},
+    {"key": "infeasible", "type": "toggle", "value": true}
+  ],
+  "connector": {"id": "none", "name": "none", "type": ".none", "fields": null},
+  "settings": {"syncAlerts": false}
+}

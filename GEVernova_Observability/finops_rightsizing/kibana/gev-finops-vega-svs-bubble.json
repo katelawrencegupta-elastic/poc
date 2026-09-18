@@ -1,0 +1,12 @@
+{
+  "attributes": {
+    "title": "[FinOps] Identified vs recs bubble",
+    "description": "Vega-Lite bubble plot. Identified monthly vs open recs.",
+    "visState": "{\"title\": \"[FinOps] Identified vs recs bubble\", \"type\": \"vega\", \"aggs\": [], \"params\": {\"spec\": \"{\\\"$schema\\\": \\\"https://vega.github.io/schema/vega-lite/v5.json\\\", \\\"description\\\": \\\"Each bubble is an account. X is identified monthly USD (open+in_progress). Y is rec count. Size is identified. Not trailing spend.\\\", \\\"autosize\\\": {\\\"type\\\": \\\"fit\\\", \\\"contains\\\": \\\"padding\\\"}, \\\"data\\\": {\\\"url\\\": {\\\"%type%\\\": \\\"esql\\\", \\\"%context%\\\": true, \\\"%timefield%\\\": \\\"@timestamp\\\", \\\"query\\\": \\\"FROM finops-rightsizing-latest*\\\\n| WHERE finops.rightsizing.status IN (\\\\\\\"open\\\\\\\", \\\\\\\"in_progress\\\\\\\")\\\\n| EVAL account = CASE(\\\\n    cloud.account.id == \\\\\\\"985408759551\\\\\\\", \\\\\\\"apm-stage\\\\\\\",\\\\n    cloud.account.id == \\\\\\\"041298796264\\\\\\\", \\\\\\\"monitoring / elastic-integration\\\\\\\",\\\\n    cloud.account.id == \\\\\\\"439106060789\\\\\\\", \\\\\\\"ESF (439106060789)\\\\\\\",\\\\n    cloud.account.id == \\\\\\\"119672459156\\\\\\\", \\\\\\\"ESF (119672459156)\\\\\\\",\\\\n    cloud.account.id\\\\n)\\\\n| STATS identified = ROUND(SUM(finops.rightsizing.estimated_monthly_savings), 2), recs = COUNT(*)\\\\n    BY account\\\\n| SORT identified DESC\\\\n| LIMIT 12\\\"}}, \\\"mark\\\": {\\\"type\\\": \\\"circle\\\", \\\"opacity\\\": 0.8, \\\"stroke\\\": \\\"#1a1a1a\\\", \\\"tooltip\\\": true}, \\\"encoding\\\": {\\\"x\\\": {\\\"field\\\": \\\"identified\\\", \\\"type\\\": \\\"quantitative\\\", \\\"title\\\": \\\"Identified USD / mo\\\"}, \\\"y\\\": {\\\"field\\\": \\\"recs\\\", \\\"type\\\": \\\"quantitative\\\", \\\"title\\\": \\\"Open recs\\\"}, \\\"size\\\": {\\\"field\\\": \\\"identified\\\", \\\"type\\\": \\\"quantitative\\\", \\\"title\\\": \\\"Identified USD / mo\\\", \\\"scale\\\": {\\\"range\\\": [80, 400]}}, \\\"color\\\": {\\\"field\\\": \\\"account\\\", \\\"type\\\": \\\"nominal\\\", \\\"title\\\": \\\"Account\\\"}}}\"}}",
+    "uiStateJSON": "{}",
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": []
+}

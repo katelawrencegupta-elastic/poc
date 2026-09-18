@@ -1,0 +1,79 @@
+{
+  "name": "[SRE] K8s container memory limit \u2265 95%",
+  "tags": [
+    "sre",
+    "ge-vernova",
+    "k8s",
+    "oom"
+  ],
+  "consumer": "observability",
+  "rule_type_id": "observability.rules.custom_threshold",
+  "schedule": {
+    "interval": "5m"
+  },
+  "enabled": true,
+  "params": {
+    "criteria": [
+      {
+        "comparator": ">",
+        "metrics": [
+          {
+            "name": "A",
+            "aggType": "max",
+            "field": "metrics.k8s.container.memory_limit_utilization"
+          }
+        ],
+        "threshold": [
+          0.95
+        ],
+        "timeSize": 15,
+        "timeUnit": "m"
+      }
+    ],
+    "alertOnNoData": false,
+    "alertOnGroupDisappear": false,
+    "groupBy": [
+      "resource.attributes.k8s.cluster.name",
+      "resource.attributes.k8s.namespace.name",
+      "resource.attributes.k8s.deployment.name",
+      "resource.attributes.k8s.container.name"
+    ],
+    "searchConfiguration": {
+      "index": "metrics-*",
+      "query": {
+        "language": "kuery",
+        "query": "metrics.k8s.container.memory_limit_utilization: * and not resource.attributes.k8s.container.name: \"datadog-agent-injected\" and resource.attributes.k8s.deployment.name: *"
+      }
+    }
+  },
+  "actions": [
+    {
+      "group": "custom_threshold.fired",
+      "id": "gev-sre-server-log",
+      "params": {
+        "message": "P2 memory_limit_utilization max \u2265 0.95 for 15m (classic companion \u2192 workflow gev-sre-k8s-oom-crash-auto-code).",
+        "level": "info"
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "gev-sre-k8s-oom-crash-auto-code",
+          "summaryMode": false,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": true
+          }
+        }
+      }
+    }
+  ]
+}

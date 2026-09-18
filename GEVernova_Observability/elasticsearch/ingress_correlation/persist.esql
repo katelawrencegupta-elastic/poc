@@ -1,0 +1,71 @@
+FROM logs-aws.elb_logs-default
+| WHERE @timestamp > NOW() - 10 minutes AND trace.id IS NOT NULL
+| KEEP @timestamp, trace.id, source.ip, source.port, url.domain, url.path, http.request.method, http.response.status_code, user_agent.original, aws.elb.name, aws.elb.target_group.arn, aws.elb.action_executed, aws.elb.backend.ip, aws.elb.backend.port, aws.elb.request_processing_time.sec, aws.elb.target_status_code
+| LOOKUP JOIN lookup-waf-trace ON trace.id
+| WHERE event.action IS NOT NULL
+| EVAL
+    source_ip = source.ip,
+    source_port = source.port,
+    url_domain = url.domain,
+    url_path = url.path,
+    http_method = http.request.method,
+    http_status_code = http.response.status_code,
+    ua = user_agent.original,
+    elb_name = aws.elb.name,
+    target_group_arn = `aws.elb.target_group.arn`,
+    action_executed = aws.elb.action_executed,
+    backend_ip = aws.elb.backend.ip,
+    backend_port = aws.elb.backend.port,
+    request_processing_time_sec = `aws.elb.request_processing_time.sec`,
+    target_status_code = aws.elb.target_status_code,
+    waf_action = event.action,
+    rule_id = rule.id,
+    waf_arn = `aws.waf.arn`,
+    http_request_id = `http.request.id`,
+    tnt_id = tnt
+| STATS
+    alb_timestamp = MIN(@timestamp),
+    source_ip = VALUES(source_ip),
+    source_port = VALUES(source_port),
+    url_domain = VALUES(url_domain),
+    url_path = VALUES(url_path),
+    http_method = VALUES(http_method),
+    http_status_code = VALUES(http_status_code),
+    ua = VALUES(ua),
+    elb_name = VALUES(elb_name),
+    target_group_arn = VALUES(target_group_arn),
+    action_executed = VALUES(action_executed),
+    backend_ip = VALUES(backend_ip),
+    backend_port = VALUES(backend_port),
+    request_processing_time_sec = VALUES(request_processing_time_sec),
+    target_status_code = VALUES(target_status_code),
+    waf_action = VALUES(waf_action),
+    rule_id = VALUES(rule_id),
+    waf_arn = VALUES(waf_arn),
+    http_request_id = VALUES(http_request_id),
+    tnt = VALUES(tnt_id)
+  BY trace.id
+| EVAL
+    alb_timestamp = MV_FIRST(alb_timestamp),
+    source_ip = MV_FIRST(source_ip),
+    source_port = MV_FIRST(source_port),
+    url_domain = MV_FIRST(url_domain),
+    url_path = MV_FIRST(url_path),
+    http_method = MV_FIRST(http_method),
+    http_status_code = MV_FIRST(http_status_code),
+    ua = MV_FIRST(ua),
+    elb_name = MV_FIRST(elb_name),
+    target_group_arn = MV_FIRST(target_group_arn),
+    action_executed = MV_FIRST(action_executed),
+    backend_ip = MV_FIRST(backend_ip),
+    backend_port = MV_FIRST(backend_port),
+    request_processing_time_sec = MV_FIRST(request_processing_time_sec),
+    target_status_code = MV_FIRST(target_status_code),
+    waf_action = MV_FIRST(waf_action),
+    rule_id = MV_FIRST(rule_id),
+    waf_arn = MV_FIRST(waf_arn),
+    http_request_id = MV_FIRST(http_request_id),
+    tnt = MV_FIRST(tnt),
+    message = CONCAT(TO_STRING(http_method), " ", TO_STRING(url_path), " ", TO_STRING(http_status_code))
+| KEEP trace.id, alb_timestamp, source_ip, source_port, url_domain, url_path, http_method, http_status_code, ua, elb_name, target_group_arn, action_executed, backend_ip, backend_port, request_processing_time_sec, target_status_code, waf_action, rule_id, waf_arn, http_request_id, message, tnt
+| LIMIT 20000

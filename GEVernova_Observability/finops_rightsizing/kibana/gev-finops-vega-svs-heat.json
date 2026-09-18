@@ -1,0 +1,12 @@
+{
+  "attributes": {
+    "title": "[FinOps] Spend heatmap account \u00d7 time",
+    "description": "Vega-Lite table heatmap. LINKED_ACCOUNT unblended.",
+    "visState": "{\"title\": \"[FinOps] Spend heatmap account \\u00d7 time\", \"type\": \"vega\", \"aggs\": [], \"params\": {\"spec\": \"{\\\"$schema\\\": \\\"https://vega.github.io/schema/vega-lite/v5.json\\\", \\\"description\\\": \\\"LINKED_ACCOUNT unblended heatmap. Account \\\\u00d7 time. Vega-Lite table heatmap analogue.\\\", \\\"autosize\\\": {\\\"type\\\": \\\"fit\\\", \\\"contains\\\": \\\"padding\\\"}, \\\"data\\\": {\\\"url\\\": {\\\"%type%\\\": \\\"esql\\\", \\\"%context%\\\": true, \\\"%timefield%\\\": \\\"@timestamp\\\", \\\"query\\\": \\\"FROM metrics-aws.billing-default\\\\n| WHERE @timestamp >= ?_tstart AND @timestamp <= ?_tend\\\\n  AND aws.billing.group_definition.key == \\\\\\\"LINKED_ACCOUNT\\\\\\\"\\\\n| EVAL account = CASE(\\\\n    COALESCE(aws.billing.group_by.LINKED_ACCOUNT, cloud.account.id) == \\\\\\\"985408759551\\\\\\\", \\\\\\\"apm-stage\\\\\\\",\\\\n    COALESCE(aws.billing.group_by.LINKED_ACCOUNT, cloud.account.id) == \\\\\\\"041298796264\\\\\\\", \\\\\\\"monitoring / elastic-integration\\\\\\\",\\\\n    COALESCE(aws.billing.group_by.LINKED_ACCOUNT, cloud.account.id) == \\\\\\\"439106060789\\\\\\\", \\\\\\\"ESF (439106060789)\\\\\\\",\\\\n    COALESCE(aws.billing.group_by.LINKED_ACCOUNT, cloud.account.id) == \\\\\\\"119672459156\\\\\\\", \\\\\\\"ESF (119672459156)\\\\\\\",\\\\n    COALESCE(aws.billing.group_by.LINKED_ACCOUNT, cloud.account.id)\\\\n)\\\\n| STATS spend = ROUND(SUM(aws.billing.UnblendedCost.amount), 2)\\\\n    BY t = BUCKET(@timestamp, 24, ?_tstart, ?_tend), account\\\\n| WHERE spend IS NOT NULL\\\\n| SORT t ASC\\\"}}, \\\"mark\\\": {\\\"type\\\": \\\"rect\\\", \\\"tooltip\\\": true}, \\\"encoding\\\": {\\\"x\\\": {\\\"field\\\": \\\"t\\\", \\\"type\\\": \\\"temporal\\\", \\\"title\\\": \\\"Time\\\"}, \\\"y\\\": {\\\"field\\\": \\\"account\\\", \\\"type\\\": \\\"nominal\\\", \\\"title\\\": \\\"Account\\\"}, \\\"color\\\": {\\\"field\\\": \\\"spend\\\", \\\"type\\\": \\\"quantitative\\\", \\\"title\\\": \\\"Unblended USD\\\", \\\"scale\\\": {\\\"scheme\\\": \\\"yelloworangered\\\"}}}, \\\"height\\\": 220}\"}}",
+    "uiStateJSON": "{}",
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"query\": {\"query\": \"\", \"language\": \"kuery\"}, \"filter\": []}"
+    }
+  },
+  "references": []
+}
