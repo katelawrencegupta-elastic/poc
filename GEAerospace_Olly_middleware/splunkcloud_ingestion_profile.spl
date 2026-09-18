@@ -1,0 +1,150 @@
+/*
+ * ============================================================
+ * SplunkCloud Data Ingestion Profile
+ * ============================================================
+ * Metrics per sourcetype:
+ *   Volume    — GB indexed (from license usage log, most accurate)
+ *   Events    — total event count via tstats (fast, accelerated)
+ *   EPS       — avg events/sec over the window
+ *   Complexity — 0-100 composite score:
+ *                  60% avg event size (proxy for field richness)
+ *                  40% source spread (distinct sources / hosts)
+ *
+ * Default window: last 24 hours.
+ * To change: update earliest= and latest=, and the EPS divisor
+ *   (86400 = 24h in seconds; 3600 = 1h; 604800 = 7d).
+ * ============================================================
+ */
+
+
+/* ──────────────────────────────────────────────────────────
+   QUERY 1 — Main Ingestion Profile (run this first)
+   Combines license log bytes with tstats event counts.
+   Expected runtime: seconds on most SplunkCloud environments.
+   ────────────────────────────────────────────────────────── */
+
+index=_internal source=*license_usage.log* type=Usage
+    earliest=-24h@h latest=now
+| stats sum(b) as raw_bytes by st
+| rename st as sourcetype
+| join type=left sourcetype [
+    | tstats
+        count            as event_count,
+        dc(host)         as distinct_hosts,
+        dc(source)       as distinct_sources,
+        dc(index)        as distinct_indexes
+      where index=*
+      earliest=-24h@h latest=now
+      by sourcetype
+]
+| eval
+    total_GB         = round(raw_bytes / 1073741824, 3),
+    avg_event_bytes  = round(raw_bytes / event_count, 0),
+    avg_EPS          = round(event_count / 86400, 2)
+
+/* ── % share of total ingestion volume ── */
+| eventstats sum(total_GB) as grand_total_GB
+| eval pct_of_volume = round(total_GB / grand_total_GB * 100, 2)
+
+/* ── Complexity score (0-100) ──────────────────────────────
+   size_score  : log-normalised avg event bytes (ceiling ~64 KB)
+   spread_score: log-normalised distinct sources (ceiling ~10K)
+   ────────────────────────────────────────────────────────── */
+| eval
+    _size_score    = round(log(coalesce(avg_event_bytes, 100) + 1) / log(65537) * 60, 0),
+    _spread_score  = round(log(coalesce(distinct_sources, 1)  + 1) / log(10001) * 40, 0),
+    complexity_score = min(_size_score + _spread_score, 100),
+    complexity = case(
+        complexity_score < 20, "Low",
+        complexity_score < 45, "Medium",
+        complexity_score < 70, "High",
+        true(),                "Very High"
+    )
+
+| sort -total_GB
+| fields - _size_score, _spread_score, grand_total_GB, raw_bytes
+| rename
+    sourcetype       as Sourcetype,
+    event_count      as "Events (24h)",
+    total_GB         as "Volume (GB)",
+    pct_of_volume    as "% Total",
+    avg_EPS          as "Avg EPS",
+    avg_event_bytes  as "Avg Event (bytes)",
+    distinct_hosts   as "Distinct Hosts",
+    distinct_sources as "Distinct Sources",
+    distinct_indexes as "Distinct Indexes",
+    complexity_score as "Complexity Score",
+    complexity       as "Complexity Tier"
+
+
+/* ──────────────────────────────────────────────────────────
+   QUERY 2 — EPS Trend by Sourcetype (last 24h, hourly)
+   Use to spot ingestion spikes or gaps per sourcetype.
+   ────────────────────────────────────────────────────────── */
+
+| tstats count as event_count
+  where index=* earliest=-24h@h latest=now
+  by sourcetype _time span=1h
+| eval EPS = round(event_count / 3600, 2)
+| timechart span=1h sum(EPS) by sourcetype limit=20 useother=false
+
+
+/* ──────────────────────────────────────────────────────────
+   QUERY 3 — Field-Level Complexity Supplement
+   Samples 1,000 events per sourcetype to count extracted fields.
+   WARNING: Run against top sourcetypes only — can be expensive.
+   Uses map; adjust `head 15` to control how many sourcetypes.
+   ────────────────────────────────────────────────────────── */
+
+index=_internal source=*license_usage.log* type=Usage
+    earliest=-24h@h latest=now
+| stats sum(b) as raw_bytes by st
+| rename st as sourcetype
+| sort -raw_bytes
+| head 15
+| map maxsearches=5 search="
+    search index=* sourcetype=\"$sourcetype$\" earliest=-1h latest=now
+    | head 1000
+    | fieldsummary maxvals=0
+    | stats
+        count                     as total_fields,
+        sum(if(percent=100,1,0))  as always_present_fields,
+        avg(percent)              as avg_field_fill_pct
+    | eval
+        sourcetype        = \"$sourcetype$\",
+        avg_field_fill_pct = round(avg_field_fill_pct, 1)
+  "
+| eval sparsity = case(
+    avg_field_fill_pct >= 80, "Dense (structured)",
+    avg_field_fill_pct >= 50, "Moderate",
+    avg_field_fill_pct >= 20, "Sparse",
+    true(),                   "Very Sparse (unstructured)"
+  )
+| sort -total_fields
+| rename
+    sourcetype             as Sourcetype,
+    total_fields           as "Extracted Fields",
+    always_present_fields  as "Always-Present Fields",
+    avg_field_fill_pct     as "Avg Field Fill %",
+    sparsity               as "Data Density"
+
+
+/* ──────────────────────────────────────────────────────────
+   QUERY 4 — Volume Growth (7-day rolling, daily)
+   Detects sourcetypes growing faster than the environment avg.
+   ────────────────────────────────────────────────────────── */
+
+index=_internal source=*license_usage.log* type=Usage
+    earliest=-7d@d latest=now
+| eval day = strftime(_time, "%Y-%m-%d")
+| stats sum(b) as raw_bytes by day, st
+| eval GB = round(raw_bytes / 1073741824, 3)
+| rename st as sourcetype
+| eventstats avg(GB) as env_avg_GB by day
+| eval pct_vs_avg = round(GB / env_avg_GB * 100, 1)
+| sort day sourcetype
+| rename
+    day         as Date,
+    sourcetype  as Sourcetype,
+    GB          as "Volume (GB)",
+    pct_vs_avg  as "% vs Env Avg"
